@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CF SISTEMAS - Remoto</title>
+    <style>
+        /* MANTENDO SEU PADRÃO VISUAL */
+        body {
+            background: #1a1a1a; 
+            color: white; 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding-top: 50px;
+            margin: 0;
+        }
+        .card {
+            display: inline-block; 
+            background: #333; 
+            padding: 40px; 
+            border-radius: 15px; 
+            border-top: 10px solid #2ecc71; /* Cor inicial Verde */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            min-width: 300px;
+            transition: border-color 0.5s ease;
+        }
+        h1 { margin-bottom: 10px; font-size: 24px; color: #bbb; }
+        .status {
+            font-size: 35px; 
+            font-weight: bold; 
+            margin: 20px 0; 
+            color: #2ecc71; /* Cor inicial Verde */
+            transition: color 0.5s ease;
+        }
+        .info { color: #888; font-size: 14px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="mainCard">
+        <h1>CF SISTEMAS</h1>
+        <div class="status" id="statusMsg">Conectando...</div>
+        <div class="info">Monitoramento Notifier NFS-320</div>
+    </div>
+
+    <script>
+        // CONFIGURAÇÕES DO SEU DISPOSITIVO
+        const authToken = "Q1Y_GMHHKwlhWLushUkHJQCVCHH5VR79";
+        const blynkUrl = `https://ny3.blynk.cloud/external/api/get?token=${authToken}&V1`;
+
+        async function atualizarStatus() {
+            try {
+                const response = await fetch(blynkUrl);
+                const msg = await response.text();
+                
+                const statusDiv = document.getElementById('statusMsg');
+                const card = document.getElementById('mainCard');
+                
+                statusDiv.innerText = msg;
+
+                // LÓGICA DE CORES IGUAL AO SEU ESP32
+                let cor = "#2ecc71"; // Verde (OK)
+                
+                const msgLower = msg.toLowerCase();
+                if (msgLower.includes("incendio") || msgLower.includes("alarm") || msgLower.includes("fogo")) {
+                    cor = "#ff0000"; // Vermelho
+                } else if (msgLower.includes("falha") || msgLower.includes("inicializando")) {
+                    cor = "#f1c40f"; // Amarelo
+                }
+
+                // Aplica as cores no layout
+                statusDiv.style.color = cor;
+                card.style.borderColor = cor;
+
+            } catch (error) {
+                console.error("Erro ao buscar dados do Blynk:", error);
+                document.getElementById('statusMsg').innerText = "Erro de Conexão";
+            }
+        }
+
+        // Atualiza a cada 2 segundos (igual ao seu meta-refresh)
+        setInterval(atualizarStatus, 2000);
+        atualizarStatus(); // Chama a primeira vez ao abrir
+    </script>
+</body>
+</html>
