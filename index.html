@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Remoto</title>
     <style>
-        /* MANTENDO SEU PADRÃO VISUAL */
+        /* MANTENDO SEU PADRÃƒO VISUAL */
         body {
             background: #1a1a1a; 
             color: white; 
@@ -44,7 +44,7 @@
     </div>
 
     <script>
-        // CONFIGURAÇÕES DO SEU DISPOSITIVO
+        // CONFIGURAÃ‡Ã•ES DO SEU DISPOSITIVO
         const authToken = "Q1Y_GMHHKwlhWLushUkHJQCVCHH5VR79";
         const blynkUrl = `https://ny3.blynk.cloud/external/api/get?token=${authToken}&V1`;
 
@@ -58,7 +58,7 @@
                 
                 statusDiv.innerText = msg;
 
-                // LÓGICA DE CORES IGUAL AO SEU ESP32
+                // LÃ“GICA DE CORES IGUAL AO SEU ESP32
                 let cor = "#2ecc71"; // Verde (OK)
                 
                 const msgLower = msg.toLowerCase();
@@ -74,7 +74,7 @@
 
             } catch (error) {
                 console.error("Erro ao buscar dados do Blynk:", error);
-                document.getElementById('statusMsg').innerText = "Erro de Conexão";
+                document.getElementById('statusMsg').innerText = "Erro de ConexÃ£o";
             }
         }
 
