@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Histórico - CF SISTEMAS</title>
+    <style>
+        body { font-family: monospace; background: #1a1a1a; color: #0f0; padding: 20px; }
+        .log-container { background: #000; border: 1px solid #444; padding: 10px; height: 80vh; overflow-y: scroll; text-align: left; }
+        .btn-voltar { display: block; width: 150px; margin: 20px auto; text-align: center; color: #fff; text-decoration: none; background: #444; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h2>HISTÓRICO DE EVENTOS</h2>
+    <div id="log" class="log-container">Buscando histórico...</div>
+    <a href="index.html" class="btn-voltar">⬅️ VOLTAR</a>
+
+    <script>
+        // Nota: Para o histórico remoto, o ESP32 precisará enviar o log para o Blynk (Pino V2)
+        const AUTH_TOKEN = "SEU_BLYNK_AUTH_TOKEN";
+        function carregarHistorico() {
+            fetch(`https://blynk.cloud{AUTH_TOKEN}&V2`)
+                .then(r => r.text())
+                .then(d => { document.getElementById('log').innerText = d; });
+        }
+        carregarHistorico();
+    </script>
+</body>
+</html>
