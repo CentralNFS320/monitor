@@ -5,62 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Histórico</title>
     <style>
-        body { 
-            font-family: 'Segoe UI', sans-serif; 
-            background: #0d0d0d; 
-            color: #e0e0e0; 
-            margin: 0; 
-            padding: 20px; 
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
+        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #e0e0e0; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; text-align: center; }
         h1 { color: #fff; font-size: 22px; margin-bottom: 5px; }
         p.subtitle { color: #666; font-size: 14px; margin-bottom: 25px; }
 
-        /* Estilo de Cartão de Evento com Baixo Relevo */
-        .log-entry {
-            background: #1a1a1a;
+        /* Painel de Busca */
+        .search-panel {
+            background: #151515;
             padding: 15px;
-            margin-bottom: 15px;
             border-radius: 10px;
-            text-align: left;
-            border-left: 4px solid #444;
-            /* Efeito Inset solicitado */
+            margin-bottom: 20px;
+            border: 1px solid #222;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        input[type="date"] {
+            background: #222; border: 1px solid #444; color: #fff;
+            padding: 10px; border-radius: 5px; font-size: 16px; width: 100%;
+            box-sizing: border-box;
+        }
+        .btn-memoria {
+            background: #007bff; color: white; border: none; padding: 12px;
+            border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s;
+        }
+        .btn-memoria:hover { background: #0056b3; }
+
+        .log-entry {
+            background: #1a1a1a; padding: 15px; margin-bottom: 15px;
+            border-radius: 10px; text-align: left; border-left: 4px solid #444;
             box-shadow: inset 2px 2px 5px #000, 5px 5px 15px rgba(0,0,0,0.5);
         }
+        .log-entry .time { font-size: 11px; color: #0af; display: block; margin-bottom: 5px; text-transform: uppercase; }
+        .log-entry .msg { font-size: 15px; font-family: 'Courier New', Courier, monospace; word-wrap: break-word; }
 
-        .log-entry .time {
-            font-size: 11px;
-            color: #0af;
-            display: block;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
-
-        .log-entry .msg {
-            font-size: 16px;
-            font-family: 'Courier New', Courier, monospace; /* Fonte técnica */
-        }
-
-        .btn-voltar {
-            display: inline-block;
-            margin-top: 10px;
-            color: #888;
-            text-decoration: none;
-            font-size: 14px;
-            padding: 10px;
-            transition: 0.3s;
-        }
-
-        .btn-voltar:hover { color: #fff; }
-
+        .btn-voltar { display: inline-block; margin-top: 10px; color: #888; text-decoration: none; font-size: 14px; padding: 10px; }
         #lista-logs { margin-top: 20px; }
-
-        /* Scrollbar customizada para combinar com o tema */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #0d0d0d; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
@@ -71,34 +52,67 @@
     <div class="container">
         <a href="index.html" class="btn-voltar">← Voltar ao Painel</a>
         <h1>HISTÓRICO DE EVENTOS</h1>
-        <p class="subtitle">CF SISTEMAS - Últimos registros da Central</p>
+        <p class="subtitle">CF SISTEMAS - Consulta de Memória ESP32</p>
+
+        <div class="search-panel">
+            <button class="btn-memoria" onclick="solicitarLeituraTotal()">CARREGAR TODA A MEMÓRIA</button>
+            <p style="font-size: 12px; color: #555; margin: 5px 0;">OU BUSQUE POR DATA NO CALENDÁRIO:</p>
+            <input type="date" id="calendario" onchange="buscarPorData()">
+        </div>
 
         <div id="lista-logs">
-            <!-- Os eventos aparecerão aqui -->
-            <div class="log-entry">
-                <span class="msg">Aguardando novos dados...</span>
-            </div>
+            <div class="log-entry"><span class="msg">Aguardando comando ou novos dados...</span></div>
         </div>
     </div>
 
     <script>
         const AUTH_TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        const V_PIN_LOG = "V2"; // Pino com a mensagem completa
+        const V_PIN_LOG = "V2";
+        const V_PIN_BOTAO = "V3";
+        const V_PIN_BUSCA = "V4";
         let ultimoLog = "";
 
+        // 1. SOLICITAR LEITURA TOTAL (V3)
+        function solicitarLeituraTotal() {
+            document.getElementById('lista-logs').innerHTML = '<div class="log-entry">Solicitando memória ao ESP32...</div>';
+            fetch(`https://blynk.cloud/external/api/update?token=${AUTH_TOKEN}&${V_PIN_BOTAO}=1`)
+                .then(() => console.log("Pedido de leitura enviado"));
+        }
+
+        // 2. BUSCAR POR DATA (V4)
+        function buscarPorData() {
+            let dataRaw = document.getElementById('calendario').value; // Formato 2026-05-06
+            if(!dataRaw) return;
+
+            // Converte para o padrão da Central (06/05/26)
+            let partes = dataRaw.split('-');
+            let dataFormatada = partes[2] + '/' + partes[1] + '/' + partes[0].substring(2);
+
+            document.getElementById('lista-logs').innerHTML = `<div class="log-entry">Buscando eventos de ${dataFormatada}...</div>`;
+            
+            // Envia a data para o V4 no ESP32
+            fetch(`https://blynk.cloud/external/api/update?token=${AUTH_TOKEN}&${V_PIN_BUSCA}=${dataFormatada}`)
+                .then(() => console.log("Busca enviada: " + dataFormatada));
+        }
+
+        // 3. BUSCAR RESULTADOS NO V2
         function buscarLog() {
             const url = `https://blynk.cloud/external/api/get?token=${AUTH_TOKEN}&${V_PIN_LOG}`;
-
             fetch(url)
                 .then(response => response.text())
                 .then(data => {
-                    // Só adiciona se a mensagem for nova e não estiver vazia
                     if (data !== ultimoLog && data.length > 2) {
+                        // Se recebermos uma carga grande (histórico), limpamos a tela e mostramos
+                        if(data.includes("\n")) {
+                           document.getElementById('lista-logs').innerHTML = ""; 
+                           let linhas = data.split('\n');
+                           linhas.forEach(l => { if(l.length > 5) adicionarNaTela(l); });
+                        } else {
+                           adicionarNaTela(data);
+                        }
                         ultimoLog = data;
-                        adicionarNaTela(data);
                     }
-                })
-                .catch(err => console.error("Erro ao buscar logs:", err));
+                });
         }
 
         function adicionarNaTela(mensagem) {
@@ -106,30 +120,23 @@
             const agora = new Date();
             const horaFormatada = agora.toLocaleTimeString('pt-BR');
 
-            // Cria o elemento de log com o visual industrial
             const novoItem = document.createElement('div');
             novoItem.className = 'log-entry';
             
-            // Define a cor da borda lateral com base no conteúdo
             if(mensagem.includes("ALARM") || mensagem.includes("FIRE")) novoItem.style.borderLeftColor = "#ff3333";
             else if(mensagem.includes("FAULT")) novoItem.style.borderLeftColor = "#ffcc00";
             else novoItem.style.borderLeftColor = "#00ff7f";
 
             novoItem.innerHTML = `
-                <span class="time">RECEBIDO ÀS ${horaFormatada}</span>
+                <span class="time">REGISTRO: ${horaFormatada}</span>
                 <span class="msg">${mensagem}</span>
             `;
 
-            // Insere no topo da lista
             lista.insertBefore(novoItem, lista.firstChild);
-
-            // Limita a exibição aos últimos 10 eventos para não pesar a página
-            if (lista.children.length > 10) {
-                lista.removeChild(lista.lastChild);
-            }
+            // No modo de histórico, permitimos mais itens na tela
+            if (lista.children.length > 50) lista.removeChild(lista.lastChild);
         }
 
-        // Atualiza rápido no histórico (cada 2 segundos)
         setInterval(buscarLog, 2000);
         buscarLog();
     </script>
