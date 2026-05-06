@@ -3,35 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Painel Real-Time</title>
+    <title>CF SISTEMAS - Real Time</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
+        h1 { margin-top: 30px; letter-spacing: 2px; }
         
-        /* Cartão de Status com Baixo Relevo */
         .status-card {
-            background: #1a1a1a;
-            padding: 40px 20px;
-            border-radius: 20px;
-            margin-top: 50px;
+            background: #1a1a1a; padding: 50px 20px; border-radius: 20px; margin-top: 30px;
             box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
-            border-top: 6px solid #00ff7f; /* Cor inicial Verde */
-            transition: 0.5s;
+            border-top: 8px solid #00ff7f; transition: 0.4s;
         }
 
-        #status-texto { font-size: 24px; font-weight: bold; margin: 10px 0; }
-        #ultima-msg { font-size: 14px; color: #888; font-family: monospace; }
-
-        .btn-link {
-            display: inline-block;
-            margin-top: 40px;
-            padding: 15px 30px;
-            background: #222;
-            color: #0af;
-            text-decoration: none;
-            border-radius: 10px;
-            font-weight: bold;
-            border: 1px solid #333;
+        #status-texto { font-size: 26px; font-weight: bold; transition: 0.3s; }
+        #ultima-msg { font-size: 13px; color: #555; margin-top: 20px; font-family: monospace; }
+        
+        .nav-btn {
+            display: inline-block; margin-top: 40px; padding: 15px 40px;
+            background: #111; color: #0af; text-decoration: none;
+            border-radius: 10px; border: 1px solid #333; font-weight: bold;
         }
     </style>
 </head>
@@ -39,52 +29,50 @@
 
     <div class="container">
         <h1>CF SISTEMAS</h1>
-        <p style="color: #444;">MONITORAMENTO NFS-320</p>
-
         <div id="cartao" class="status-card">
-            <div id="status-texto">CONECTANDO...</div>
-            <div id="ultima-msg">Aguardando dados da central...</div>
+            <div id="status-texto">SINCRONIZANDO...</div>
+            <div id="ultima-msg">Aguardando dados...</div>
         </div>
-
-        <a href="historico.html" class="btn-link">VER HISTÓRICO COMPLETO</a>
+        <a href="historico.html" class="nav-btn">PÁGINA DE HISTÓRICO</a>
     </div>
 
     <script>
-        const AUTH_TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        
-        function atualizarPainel() {
-            // Buscamos o V1 (Status resumido) e V2 (Mensagem completa)
-            const urlV1 = `https://blynk.cloud/external/api/get?token=${AUTH_TOKEN}&V1`;
-            const urlV2 = `https://blynk.cloud/external/api/get?token=${AUTH_TOKEN}&V2`;
+        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
-            // Puxa o Status (V1)
-            fetch(urlV1).then(r => r.text()).then(status => {
-                const cartao = document.getElementById('cartao');
-                const texto = document.getElementById('status-texto');
-                
-                texto.innerText = status;
+        function consultarBlynk() {
+            // Consulta V1 (Status) e V2 (Detalhe)
+            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1`)
+                .then(r => r.text())
+                .then(status => {
+                    const cartao = document.getElementById('cartao');
+                    const texto = document.getElementById('status-texto');
+                    texto.innerText = status;
 
-                // Se houver FOGO ou ALARME, muda para VERMELHO na hora
-                if(status.includes("FIRE") || status.includes("ALARM") || status.includes("FOGO")) {
-                    cartao.style.borderTopColor = "#ff0000";
-                    texto.style.color = "#ff0000";
-                } else {
-                    cartao.style.borderTopColor = "#00ff7f";
-                    texto.style.color = "#00ff7f";
-                }
-            });
+                    let s = status.toUpperCase();
+                    // Lógica de Cores
+                    if (s.includes("FIRE") || s.includes("FOGO") || s.includes("ALARM")) {
+                        cartao.style.borderTopColor = "#ff0000"; // Vermelho
+                        texto.style.color = "#ff0000";
+                    } 
+                    else if (s.includes("FAULT") || s.includes("FALHA")) {
+                        cartao.style.borderTopColor = "#ffcc00"; // Amarelo
+                        texto.style.color = "#ffcc00";
+                    }
+                    else {
+                        cartao.style.borderTopColor = "#00ff7f"; // Verde
+                        texto.style.color = "#00ff7f";
+                    }
+                });
 
-            // Puxa a mensagem detalhada (V2)
-            fetch(urlV2).then(r => r.text()).then(msg => {
-                if(msg.length > 3) {
-                    document.getElementById('ultima-msg').innerText = msg;
-                }
-            });
+            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2`)
+                .then(r => r.text())
+                .then(msg => {
+                    if(msg.length > 3) document.getElementById('ultima-msg').innerText = msg;
+                });
         }
 
-        // Atualiza a cada 1.5 segundos para ser "tempo real"
-        setInterval(atualizarPainel, 1500);
-        atualizarPainel();
+        setInterval(consultarBlynk, 1500); // Atualiza a cada 1.5 segundos
+        consultarBlynk();
     </script>
 </body>
 </html>
