@@ -5,47 +5,121 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Remoto</title>
     <style>
-        body { font-family: Arial; text-align: center; background: #1a1a1a; color: white; margin: 0; padding: 0; }
-        .card { background: #333; padding: 20px; border-top: 5px solid #f00; display: inline-block; margin-top: 30px; width: 90%; max-width: 500px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        #ev { font-size: 18px; margin: 20px 0; min-height: 50px; font-weight: bold; transition: all 0.3s; }
-        .btn { display: inline-block; margin-top: 20px; color: #0af; text-decoration: none; font-weight: bold; border: 1px solid #0af; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        /* Estilo Dark Mode Profissional */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            text-align: center; 
+            background: #0d0d0d; 
+            color: #e0e0e0; 
+            margin: 0; 
+            padding: 0; 
+        }
+
+        .card { 
+            background: #1a1a1a; 
+            padding: 30px; 
+            border-top: 5px solid #444; /* Borda neutra inicial */
+            display: inline-block; 
+            margin-top: 50px; 
+            width: 90%; 
+            max-width: 450px; 
+            border-radius: 15px; 
+            box-shadow: 10px 10px 20px rgba(0,0,0,0.8); 
+        }
+
+        h1 { margin-bottom: 5px; color: #fff; letter-spacing: 1px; }
+        h3 { color: #888; font-weight: normal; margin-top: 0; font-size: 14px; }
+
+        /* Efeito de Baixo Relevo (Inset Shadow) solicitado */
+        #ev { 
+            font-size: 20px; 
+            margin: 25px 0; 
+            padding: 20px;
+            min-height: 60px; 
+            font-weight: bold; 
+            background: #121212;
+            border-radius: 10px;
+            box-shadow: inset 4px 4px 10px #000, inset -1px -1px 5px #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.5s ease;
+        }
+
+        .btn { 
+            display: inline-block; 
+            margin-top: 25px; 
+            color: #bbb; 
+            text-decoration: none; 
+            font-size: 13px;
+            font-weight: bold; 
+            border: 1px solid #333; 
+            padding: 12px 25px; 
+            border-radius: 8px; 
+            transition: 0.3s;
+            background: #222;
+        }
+
+        .btn:hover { background: #333; color: #fff; border-color: #555; }
+
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
-    <div class="card">
+
+    <div class="card" id="mainCard">
         <h1>CF SISTEMAS</h1>
-        <h3>Monitoramento NFS-320</h3>
-        <div id="ev">Carregando...</div>
-        <hr>
-        <a href="historico.html" class="btn">📜 VER HISTÓRICO</a>
+        <h3>MONITORAMENTO REMOTO NFS-320</h3>
+        
+        <div id="ev">Conectando ao Blynk...</div>
+        
+        <a href="historico.html" class="btn">📜 VER HISTÓRICO COMPLETO</a>
     </div>
 
     <script>
-        const AUTH_TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa"; // VOCÊ DEVE TROCAR ISSO
-        const V_PIN = "V1"; 
+        const AUTH_TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
+        const V_PIN = "V1"; // Pino onde o ESP32 envia o Status Filtrado
 
         function atualizarStatus() {
-            fetch(`https://blynk.cloud{AUTH_TOKEN}&${V_PIN}`)
-                .then(response => response.text())
+            // URL Corrigida para a API do Blynk IoT
+            const url = `https://blynk.cloud/external/api/get?token=${AUTH_TOKEN}&${V_PIN}`;
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error('Erro na rede');
+                    return response.text();
+                })
                 .then(data => {
                     const el = document.getElementById('ev');
-                    el.innerText = data;
+                    const card = document.getElementById('mainCard');
+                    el.innerText = data.toUpperCase();
                     
-                    // Lógica de cores
-                    if (data.includes("FOGO")) {
-                        el.style.color = "#ff0000";
+                    // Lógica de Cores e Alertas
+                    if (data.includes("ALARM") || data.includes("FIRE") || data.includes("FOGO")) {
+                        el.style.color = "#ff3333"; // Vermelho Vivo
                         el.style.animation = "blink 1s infinite";
-                    } else if (data.includes("ALARME")) {
-                        el.style.color = "#ff8c00";
+                        card.style.borderTop = "5px solid #ff3333";
+                    } 
+                    else if (data.includes("FAULT") || data.includes("FALHA")) {
+                        el.style.color = "#ffcc00"; // Amarelo/Laranja
                         el.style.animation = "none";
-                    } else {
-                        el.style.color = "#2ecc71";
+                        card.style.borderTop = "5px solid #ffcc00";
+                    } 
+                    else {
+                        el.style.color = "#00ff7f"; // Verde Primavera (Industrial)
                         el.style.animation = "none";
+                        card.style.borderTop = "5px solid #00ff7f";
                     }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    document.getElementById('ev').innerText = "ERRO DE CONEXÃO";
+                    document.getElementById('ev').style.color = "#555";
                 });
         }
-        setInterval(atualizarStatus, 2000);
+
+        // Atualiza a cada 3 segundos para não sobrecarregar a API
+        setInterval(atualizarStatus, 3000);
         atualizarStatus();
     </script>
 </body>
