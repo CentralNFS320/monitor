@@ -2,27 +2,136 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Histórico - CF SISTEMAS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CF SISTEMAS - Histórico</title>
     <style>
-        body { font-family: monospace; background: #1a1a1a; color: #0f0; padding: 20px; }
-        .log-container { background: #000; border: 1px solid #444; padding: 10px; height: 80vh; overflow-y: scroll; text-align: left; }
-        .btn-voltar { display: block; width: 150px; margin: 20px auto; text-align: center; color: #fff; text-decoration: none; background: #444; padding: 10px; border-radius: 5px; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: #0d0d0d; 
+            color: #e0e0e0; 
+            margin: 0; 
+            padding: 20px; 
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        h1 { color: #fff; font-size: 22px; margin-bottom: 5px; }
+        p.subtitle { color: #666; font-size: 14px; margin-bottom: 25px; }
+
+        /* Estilo de Cartão de Evento com Baixo Relevo */
+        .log-entry {
+            background: #1a1a1a;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            text-align: left;
+            border-left: 4px solid #444;
+            /* Efeito Inset solicitado */
+            box-shadow: inset 2px 2px 5px #000, 5px 5px 15px rgba(0,0,0,0.5);
+        }
+
+        .log-entry .time {
+            font-size: 11px;
+            color: #0af;
+            display: block;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .log-entry .msg {
+            font-size: 16px;
+            font-family: 'Courier New', Courier, monospace; /* Fonte técnica */
+        }
+
+        .btn-voltar {
+            display: inline-block;
+            margin-top: 10px;
+            color: #888;
+            text-decoration: none;
+            font-size: 14px;
+            padding: 10px;
+            transition: 0.3s;
+        }
+
+        .btn-voltar:hover { color: #fff; }
+
+        #lista-logs { margin-top: 20px; }
+
+        /* Scrollbar customizada para combinar com o tema */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0d0d0d; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
     </style>
 </head>
 <body>
-    <h2>HISTÓRICO DE EVENTOS</h2>
-    <div id="log" class="log-container">Buscando histórico...</div>
-    <a href="index.html" class="btn-voltar">⬅️ VOLTAR</a>
+
+    <div class="container">
+        <a href="index.html" class="btn-voltar">← Voltar ao Painel</a>
+        <h1>HISTÓRICO DE EVENTOS</h1>
+        <p class="subtitle">CF SISTEMAS - Últimos registros da Central</p>
+
+        <div id="lista-logs">
+            <!-- Os eventos aparecerão aqui -->
+            <div class="log-entry">
+                <span class="msg">Aguardando novos dados...</span>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // Nota: Para o histórico remoto, o ESP32 precisará enviar o log para o Blynk (Pino V2)
         const AUTH_TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        function carregarHistorico() {
-            fetch(`https://blynk.cloud{AUTH_TOKEN}&V2`)
-                .then(r => r.text())
-                .then(d => { document.getElementById('log').innerText = d; });
+        const V_PIN_LOG = "V2"; // Pino com a mensagem completa
+        let ultimoLog = "";
+
+        function buscarLog() {
+            const url = `https://blynk.cloud/external/api/get?token=${AUTH_TOKEN}&${V_PIN_LOG}`;
+
+            fetch(url)
+                .then(response => response.text())
+                .then(data => {
+                    // Só adiciona se a mensagem for nova e não estiver vazia
+                    if (data !== ultimoLog && data.length > 2) {
+                        ultimoLog = data;
+                        adicionarNaTela(data);
+                    }
+                })
+                .catch(err => console.error("Erro ao buscar logs:", err));
         }
-        carregarHistorico();
+
+        function adicionarNaTela(mensagem) {
+            const lista = document.getElementById('lista-logs');
+            const agora = new Date();
+            const horaFormatada = agora.toLocaleTimeString('pt-BR');
+
+            // Cria o elemento de log com o visual industrial
+            const novoItem = document.createElement('div');
+            novoItem.className = 'log-entry';
+            
+            // Define a cor da borda lateral com base no conteúdo
+            if(mensagem.includes("ALARM") || mensagem.includes("FIRE")) novoItem.style.borderLeftColor = "#ff3333";
+            else if(mensagem.includes("FAULT")) novoItem.style.borderLeftColor = "#ffcc00";
+            else novoItem.style.borderLeftColor = "#00ff7f";
+
+            novoItem.innerHTML = `
+                <span class="time">RECEBIDO ÀS ${horaFormatada}</span>
+                <span class="msg">${mensagem}</span>
+            `;
+
+            // Insere no topo da lista
+            lista.insertBefore(novoItem, lista.firstChild);
+
+            // Limita a exibição aos últimos 10 eventos para não pesar a página
+            if (lista.children.length > 10) {
+                lista.removeChild(lista.lastChild);
+            }
+        }
+
+        // Atualiza rápido no histórico (cada 2 segundos)
+        setInterval(buscarLog, 2000);
+        buscarLog();
     </script>
 </body>
 </html>
