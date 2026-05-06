@@ -3,124 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Remoto</title>
+    <title>CF SISTEMAS - Painel Real-Time</title>
     <style>
-        /* Estilo Dark Mode Profissional */
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            text-align: center; 
-            background: #0d0d0d; 
-            color: #e0e0e0; 
-            margin: 0; 
-            padding: 0; 
+        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        
+        /* Cartão de Status com Baixo Relevo */
+        .status-card {
+            background: #1a1a1a;
+            padding: 40px 20px;
+            border-radius: 20px;
+            margin-top: 50px;
+            box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
+            border-top: 6px solid #00ff7f; /* Cor inicial Verde */
+            transition: 0.5s;
         }
 
-        .card { 
-            background: #1a1a1a; 
-            padding: 30px; 
-            border-top: 5px solid #444; /* Borda neutra inicial */
-            display: inline-block; 
-            margin-top: 50px; 
-            width: 90%; 
-            max-width: 450px; 
-            border-radius: 15px; 
-            box-shadow: 10px 10px 20px rgba(0,0,0,0.8); 
-        }
+        #status-texto { font-size: 24px; font-weight: bold; margin: 10px 0; }
+        #ultima-msg { font-size: 14px; color: #888; font-family: monospace; }
 
-        h1 { margin-bottom: 5px; color: #fff; letter-spacing: 1px; }
-        h3 { color: #888; font-weight: normal; margin-top: 0; font-size: 14px; }
-
-        /* Efeito de Baixo Relevo (Inset Shadow) solicitado */
-        #ev { 
-            font-size: 20px; 
-            margin: 25px 0; 
-            padding: 20px;
-            min-height: 60px; 
-            font-weight: bold; 
-            background: #121212;
-            border-radius: 10px;
-            box-shadow: inset 4px 4px 10px #000, inset -1px -1px 5px #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.5s ease;
-        }
-
-        .btn { 
-            display: inline-block; 
-            margin-top: 25px; 
-            color: #bbb; 
-            text-decoration: none; 
-            font-size: 13px;
-            font-weight: bold; 
-            border: 1px solid #333; 
-            padding: 12px 25px; 
-            border-radius: 8px; 
-            transition: 0.3s;
+        .btn-link {
+            display: inline-block;
+            margin-top: 40px;
+            padding: 15px 30px;
             background: #222;
+            color: #0af;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: bold;
+            border: 1px solid #333;
         }
-
-        .btn:hover { background: #333; color: #fff; border-color: #555; }
-
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <div class="card" id="mainCard">
+    <div class="container">
         <h1>CF SISTEMAS</h1>
-        <h3>MONITORAMENTO REMOTO NFS-320</h3>
-        
-        <div id="ev">Conectando ao Blynk...</div>
-        
-        <a href="historico.html" class="btn">📜 VER HISTÓRICO COMPLETO</a>
+        <p style="color: #444;">MONITORAMENTO NFS-320</p>
+
+        <div id="cartao" class="status-card">
+            <div id="status-texto">CONECTANDO...</div>
+            <div id="ultima-msg">Aguardando dados da central...</div>
+        </div>
+
+        <a href="historico.html" class="btn-link">VER HISTÓRICO COMPLETO</a>
     </div>
 
     <script>
         const AUTH_TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        const V_PIN = "V1"; // Pino onde o ESP32 envia o Status Filtrado
+        
+        function atualizarPainel() {
+            // Buscamos o V1 (Status resumido) e V2 (Mensagem completa)
+            const urlV1 = `https://blynk.cloud/external/api/get?token=${AUTH_TOKEN}&V1`;
+            const urlV2 = `https://blynk.cloud/external/api/get?token=${AUTH_TOKEN}&V2`;
 
-        function atualizarStatus() {
-            // URL Corrigida para a API do Blynk IoT
-            const url = `https://blynk.cloud/external/api/get?token=${AUTH_TOKEN}&${V_PIN}`;
+            // Puxa o Status (V1)
+            fetch(urlV1).then(r => r.text()).then(status => {
+                const cartao = document.getElementById('cartao');
+                const texto = document.getElementById('status-texto');
+                
+                texto.innerText = status;
 
-            fetch(url)
-                .then(response => {
-                    if (!response.ok) throw new Error('Erro na rede');
-                    return response.text();
-                })
-                .then(data => {
-                    const el = document.getElementById('ev');
-                    const card = document.getElementById('mainCard');
-                    el.innerText = data.toUpperCase();
-                    
-                    // Lógica de Cores e Alertas
-                    if (data.includes("ALARM") || data.includes("FIRE") || data.includes("FOGO")) {
-                        el.style.color = "#ff3333"; // Vermelho Vivo
-                        el.style.animation = "blink 1s infinite";
-                        card.style.borderTop = "5px solid #ff3333";
-                    } 
-                    else if (data.includes("FAULT") || data.includes("FALHA")) {
-                        el.style.color = "#ffcc00"; // Amarelo/Laranja
-                        el.style.animation = "none";
-                        card.style.borderTop = "5px solid #ffcc00";
-                    } 
-                    else {
-                        el.style.color = "#00ff7f"; // Verde Primavera (Industrial)
-                        el.style.animation = "none";
-                        card.style.borderTop = "5px solid #00ff7f";
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro:', error);
-                    document.getElementById('ev').innerText = "ERRO DE CONEXÃO";
-                    document.getElementById('ev').style.color = "#555";
-                });
+                // Se houver FOGO ou ALARME, muda para VERMELHO na hora
+                if(status.includes("FIRE") || status.includes("ALARM") || status.includes("FOGO")) {
+                    cartao.style.borderTopColor = "#ff0000";
+                    texto.style.color = "#ff0000";
+                } else {
+                    cartao.style.borderTopColor = "#00ff7f";
+                    texto.style.color = "#00ff7f";
+                }
+            });
+
+            // Puxa a mensagem detalhada (V2)
+            fetch(urlV2).then(r => r.text()).then(msg => {
+                if(msg.length > 3) {
+                    document.getElementById('ultima-msg').innerText = msg;
+                }
+            });
         }
 
-        // Atualiza a cada 3 segundos para não sobrecarregar a API
-        setInterval(atualizarStatus, 3000);
-        atualizarStatus();
+        // Atualiza a cada 1.5 segundos para ser "tempo real"
+        setInterval(atualizarPainel, 1500);
+        atualizarPainel();
     </script>
 </body>
 </html>
