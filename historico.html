@@ -2,72 +2,60 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Histórico</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #e0e0e0; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; text-align: center; }
-        .search-panel { background: #151515; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #222; }
-        input[type="date"] { background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 5px; width: 100%; margin-top: 10px; }
-        .btn-memoria { background: #007bff; color: white; border: none; padding: 12px; border-radius: 5px; width: 100%; cursor: pointer; font-weight: bold; }
-        .log-entry { background: #1a1a1a; padding: 15px; margin-bottom: 15px; border-radius: 10px; text-align: left; border-left: 4px solid #444; box-shadow: inset 2px 2px 5px #000; }
-        .log-entry .msg { font-size: 15px; font-family: monospace; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 20px; text-align: center; }
+        .panel { background: #151515; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; }
+        input[type="date"] { background: #222; color: #fff; border: 1px solid #444; padding: 10px; width: 80%; border-radius: 5px; }
+        .btn { background: #007bff; color: #fff; border: none; padding: 12px; border-radius: 5px; width: 80%; margin-bottom: 10px; font-weight: bold; cursor: pointer; }
+        .log-box { background: #1a1a1a; padding: 15px; border-radius: 10px; text-align: left; border-left: 5px solid #0af; margin-top: 10px; font-family: monospace; }
         .btn-voltar { color: #888; text-decoration: none; display: block; margin-bottom: 20px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <a href="index.html" class="btn-voltar">← Voltar ao Painel</a>
-        <div class="search-panel">
-            <button class="btn-memoria" onclick="lerTudo()">CARREGAR TODA A MEMÓRIA</button>
-            <input type="date" id="calendario" onchange="buscarData()">
-        </div>
-        <div id="lista-logs"></div>
+    <a href="index.html" class="btn-voltar">← Voltar ao Painel Principal</a>
+    <div class="panel">
+        <button class="btn" onclick="lerTudo()">CARREGAR TODA A MEMÓRIA</button>
+        <p>Ou busque por uma data:</p>
+        <input type="date" id="dataBusca" onchange="buscar()">
     </div>
+    <div id="logs"></div>
 
     <script>
-        const TOKEN = "aLLr6CClMLHVu_8TmmF6EcG8vZQ5aBa";
+        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
-        function tratar(t) {
-            try { 
-                let p = JSON.parse(t);
-                return Array.isArray(p) ? p[0] : Object.values(p)[0];
-            } catch(e) { return t.replace(/[\[\]"{} ]/g, "").replace("V2:", ""); }
+        function lerTudo() {
+            document.getElementById('logs').innerHTML = "Solicitando memória...";
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`);
         }
 
-        function lerTudo() { fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`); }
-        function buscarData() {
-            let d = document.getElementById('calendario').value;
+        function buscar() {
+            let d = document.getElementById('dataBusca').value;
             if(!d) return;
-            let p = d.split('-');
-            let dataF = p[2] + '/' + p[1] + '/' + p[0].substring(2);
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=${dataF}`);
+            let partes = d.split('-');
+            let dataFormatada = partes[2] + '/' + partes[1] + '/' + partes[0].substring(2);
+            document.getElementById('logs').innerHTML = "Buscando data: " + dataFormatada;
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=${dataFormatada}`);
         }
 
-        function atualizar() {
+        function monitorar() {
             fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2`)
-                .then(r => r.text())
-                .then(raw => {
-                    let data = tratar(raw);
-                    if (data.length > 5) {
-                        const lista = document.getElementById('lista-logs');
-                        if (data.includes("\n")) {
-                            lista.innerHTML = "";
-                            data.split('\n').reverse().forEach(l => { if(l.length > 5) add(l); });
-                        } else { add(data); }
+            .then(r => r.text()).then(t => {
+                let data = t.replace(/[\[\]"{} ]/g, "").replace("V2:", "");
+                if (data.length > 5) {
+                    const box = document.getElementById('logs');
+                    if (data.includes("\n")) {
+                        box.innerHTML = "";
+                        data.split('\n').reverse().forEach(linha => {
+                            if(linha.length > 5) box.innerHTML += `<div class="log-box">${linha}</div>`;
+                        });
+                    } else {
+                        box.innerHTML = `<div class="log-box">${data}</div>`;
                     }
-                });
+                }
+            });
         }
-
-        function add(msg) {
-            const lista = document.getElementById('lista-logs');
-            const div = document.createElement('div');
-            div.className = 'log-entry';
-            if(msg.toUpperCase().includes("FIRE")) div.style.borderLeftColor = "red";
-            div.innerHTML = `<span class="msg">${msg}</span>`;
-            lista.insertBefore(div, lista.firstChild);
-        }
-        setInterval(atualizar, 2500);
+        setInterval(monitorar, 3000);
     </script>
 </body>
 </html>
