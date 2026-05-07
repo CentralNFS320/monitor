@@ -2,79 +2,48 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>CF SISTEMAS - Monitoramento</title>
+    <title>CF SISTEMAS - Real Time</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; }
-        h1 { margin-top: 30px; letter-spacing: 2px; }
-        
         .status-card {
-            background: #1a1a1a; padding: 60px 20px; border-radius: 20px; margin-top: 40px;
+            background: #1a1a1a; padding: 60px 20px; border-radius: 20px; margin: 50px auto; max-width: 450px;
             box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
-            border-top: 8px solid #00ff7f; transition: 0.5s;
+            border-top: 8px solid #00ff7f; transition: 0.4s;
         }
-
         #status-texto { font-size: 32px; font-weight: bold; text-transform: uppercase; }
-        
-        .nav-btn {
-            display: inline-block; margin-top: 50px; padding: 18px 45px;
-            background: #222; color: #0af; text-decoration: none;
-            border-radius: 12px; border: 1px solid #333; font-weight: bold;
-        }
+        .nav-btn { display: inline-block; padding: 15px 40px; background: #222; color: #0af; text-decoration: none; border-radius: 10px; border: 1px solid #333; font-weight: bold; margin-top: 20px;}
     </style>
 </head>
 <body>
-
-    <div class="container">
-        <h1>CF SISTEMAS</h1>
-        <div id="cartao" class="status-card">
-            <div id="status-texto">SINCRONIZANDO...</div>
-        </div>
-        <a href="historico.html" class="nav-btn">PÁGINA DE HISTÓRICO</a>
+    <h1>CF SISTEMAS</h1>
+    <div id="cartao" class="status-card">
+        <div id="status-texto">SINCRONIZANDO...</div>
     </div>
+    <a href="historico.html" class="nav-btn">PÁGINA DE HISTÓRICO</a>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-
-        function limpar(t) {
-            // Remove aspas, chaves e colchetes que o Blynk envia por padrão na API
-            return t.replace(/[\[\]"{} ]/g, "").replace("V1:", "");
-        }
-
         function atualizar() {
-            // O sinal de "_" com o tempo garante que o navegador busque o dado real do servidor
-            const url = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${new Date().getTime()}`;
-            
-            fetch(url)
+            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${new Date().getTime()}`)
                 .then(r => r.text())
                 .then(t => {
-                    let status = limpar(t);
-                    
-                    // Se o texto for maior que 30 caracteres, a Index ignora (proteção contra o V2)
-                    if (status.length > 30) return;
+                    let s = t.replace(/[\[\]"{} ]/g, "").replace("V1:", "");
+                    if (s.length > 40) return; // Segurança contra histórico
 
-                    const card = document.getElementById('cartao');
                     const texto = document.getElementById('status-texto');
-                    
-                    // Se o status vier vazio ou nulo, coloca como OK
-                    if(!status || status === "null") status = "CENTRAL NFS320 OK";
+                    const cartao = document.getElementById('cartao');
+                    texto.innerText = s;
 
-                    texto.innerText = status;
-
-                    let s = status.toUpperCase();
-                    if (s.includes("FIRE") || s.includes("FOGO") || s.includes("ALARM")) {
-                        card.style.borderTopColor = "#ff0000"; texto.style.color = "#ff0000";
-                    } else if (s.includes("FAULT") || s.includes("FALHA")) {
-                        card.style.borderTopColor = "#ffcc00"; texto.style.color = "#ffcc00";
+                    let sU = s.toUpperCase();
+                    if (sU.includes("FIRE") || sU.includes("FOGO") || sU.includes("ALARM")) {
+                        cartao.style.borderTopColor = "#f00"; texto.style.color = "#f00";
+                    } else if (sU.includes("FAULT") || sU.includes("FALHA")) {
+                        cartao.style.borderTopColor = "#fc0"; texto.style.color = "#fc0";
                     } else {
-                        card.style.borderTopColor = "#00ff7f"; texto.style.color = "#00ff7f";
+                        cartao.style.borderTopColor = "#0f7"; texto.style.color = "#0f7";
                     }
-                })
-                .catch(err => {
-                    document.getElementById('status-texto').innerText = "CONEXÃO REPROVADA";
                 });
         }
-
         setInterval(atualizar, 2000);
         atualizar();
     </script>
