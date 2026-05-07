@@ -3,26 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Monitoramento</title>
+    <title>CF SISTEMAS - Painel Real-Time</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
         h1 { margin-top: 30px; letter-spacing: 2px; }
         
-        /* Layout Industrial Baixo Relevo solicitado */
+        /* Layout Industrial com Baixo Relevo Inset */
         .status-card {
             background: #1a1a1a; padding: 60px 20px; border-radius: 20px; margin-top: 40px;
             box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
-            border-top: 8px solid #00ff7f; transition: 0.5s;
+            border-top: 6px solid #00ff7f; transition: 0.5s;
         }
 
-        #status-texto { font-size: 32px; font-weight: bold; text-transform: uppercase; }
+        #status-texto { font-size: 28px; font-weight: bold; text-transform: uppercase; line-height: 1.4; }
         
         .nav-btn {
             display: inline-block; margin-top: 50px; padding: 18px 45px;
             background: #222; color: #0af; text-decoration: none;
             border-radius: 12px; border: 1px solid #333; font-weight: bold;
-            box-shadow: 3px 3px 10px rgba(0,0,0,0.3);
         }
     </style>
 </head>
@@ -30,40 +29,31 @@
 
     <div class="container">
         <h1>CF SISTEMAS</h1>
-        
         <div id="cartao" class="status-card">
-            <div id="status-texto">CARREGANDO...</div>
+            <div id="status-texto">SINCRONIZANDO...</div>
         </div>
-
-        <a href="historico.html" class="nav-btn">PÁGINA DE HISTÓRICO</a>
+        <a href="historico.html" class="nav-btn">VER HISTÓRICO COMPLETO</a>
     </div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
-        // Função para limpar as aspas e chaves que apareceram na sua imagem
-        function tratarTexto(t) {
-            try {
-                // Se vier como JSON {"V1":"falha"}, extrai apenas o valor
-                const obj = JSON.parse(t);
-                return Object.values(obj)[0];
-            } catch (e) {
-                // Se falhar, remove aspas e chaves manualmente
-                return t.replace(/[\[\]"{} ]/g, "").replace("V1:", "");
-            }
+        // Limpa resíduos de JSON (aspas, chaves, colchetes)
+        function limparDado(t) {
+            return t.replace(/[\[\]"{} ]/g, "").replace("V1:", "");
         }
 
         function atualizar() {
-            // Adicionamos um número aleatório no final para o navegador não carregar dado velho (cache)
+            // O sinal de timestamp (_=) força o site a buscar o dado real da central no servidor
             const URL = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${new Date().getTime()}`;
             
             fetch(URL)
                 .then(r => r.text())
                 .then(t => {
-                    let status = tratarTexto(t);
+                    let status = limparDado(t);
                     
-                    // Se o texto for muito longo, é lixo de memória do histórico, então ignoramos na index
-                    if (status.length > 30) return;
+                    // Se o texto for muito longo (histórico), a index ignora
+                    if (status.length > 40) return;
 
                     const card = document.getElementById('cartao');
                     const texto = document.getElementById('status-texto');
@@ -71,11 +61,11 @@
                     texto.innerText = status;
 
                     let s = status.toUpperCase();
-                    // Lógica de cores baseada no status da central NFS320
-                    if (s.includes("FIRE") || s.includes("FOGO") || s.includes("ALARM")) {
+                    // Lógica de cores automática conforme a mensagem da Notifier
+                    if (s.includes("FIRE") || s.includes("ALARM") || s.includes("FOGO")) {
                         card.style.borderTopColor = "#ff0000"; texto.style.color = "#ff0000";
                     } 
-                    else if (s.includes("FAULT") || s.includes("FALHA") || s.includes("FALHA")) {
+                    else if (s.includes("FAULT") || s.includes("FALHA")) {
                         card.style.borderTopColor = "#ffcc00"; texto.style.color = "#ffcc00";
                     } 
                     else {
@@ -83,11 +73,10 @@
                     }
                 })
                 .catch(err => {
-                    document.getElementById('status-texto').innerText = "OFFLINE";
+                    document.getElementById('status-texto').innerText = "CENTRAL OFFLINE";
                 });
         }
 
-        // Atualiza a cada 2 segundos
         setInterval(atualizar, 2000);
         atualizar();
     </script>
