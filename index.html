@@ -2,68 +2,67 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>CF SISTEMAS - Histórico</title>
+    <title>CF SISTEMAS - Painel Real-Time</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 20px; text-align: center; }
-        .panel { background: #151515; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; max-width: 500px; margin-left: auto; margin-right: auto; }
-        .log-box { background: #1a1a1a; padding: 12px; border-radius: 8px; text-align: left; border-left: 5px solid #0af; margin: 8px auto; font-family: monospace; font-size: 14px; max-width: 500px; box-shadow: inset 2px 2px 5px #000; }
-        .btn { background: #007bff; color: #fff; border: none; padding: 15px; border-radius: 8px; width: 100%; cursor: pointer; font-weight: bold; margin-bottom: 15px; }
-        input[type="date"] { background: #222; color: #fff; border: 1px solid #444; padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; }
-        .btn-voltar { color: #888; text-decoration: none; display: block; margin-bottom: 20px; font-weight: bold; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h1 { margin-top: 30px; letter-spacing: 2px; }
+        
+        .status-card {
+            background: #1a1a1a; padding: 60px 20px; border-radius: 20px; margin-top: 40px;
+            box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
+            border-top: 8px solid #00ff7f; transition: 0.5s;
+        }
+        #status-texto { font-size: 32px; font-weight: bold; text-transform: uppercase; }
+        
+        .nav-btn {
+            display: inline-block; margin-top: 60px; padding: 18px 45px;
+            background: #222; color: #0af; text-decoration: none;
+            border-radius: 12px; border: 1px solid #333; font-weight: bold;
+        }
     </style>
 </head>
 <body>
-    <a href="index.html" class="btn-voltar">← VOLTAR AO PAINEL</a>
-    <h2>HISTÓRICO DE EVENTOS</h2>
-    
-    <div class="panel">
-        <button class="btn" onclick="solicitarTudo()">CARREGAR TODOS OS EVENTOS</button>
-        <p style="font-size: 12px; color: #666;">OU FILTRAR POR DATA:</p>
-        <input type="date" id="dataBusca" onchange="buscarData()">
+    <div class="container">
+        <h1>CF SISTEMAS</h1>
+        <div id="cartao" class="status-card">
+            <div id="status-texto">SINCRONIZANDO...</div>
+        </div>
+        <a href="historico.html" class="nav-btn">VER HISTÓRICO COMPLETO</a>
     </div>
-
-    <div id="logs"></div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
-        function solicitarTudo() {
-            document.getElementById('logs').innerHTML = "<div class='log-box'>Solicitando memória interna... aguarde.</div>";
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`);
+        function tratar(t) {
+            // Remove qualquer resquício de JSON que o Blynk envie
+            return t.replace(/[\[\]"{} ]/g, "").replace("V1:", "");
         }
 
-        function buscarData() {
-            let d = document.getElementById('dataBusca').value;
-            if(!d) return;
-            let p = d.split('-');
-            let df = p[2] + '/' + p[1] + '/' + p[0].substring(2); // DD/MM/AA
-            document.getElementById('logs').innerHTML = `<div class='log-box'>Buscando eventos de ${df}...</div>`;
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=${df}`);
-        }
+        function atualizar() {
+            // Buscamos APENAS o V1. Ignoramos o V2 nesta página para não poluir.
+            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${new Date().getTime()}`)
+                .then(r => r.text())
+                .then(t => {
+                    let status = tratar(t);
+                    if (status.length > 40) return; // Se por erro vier texto longo, ignora.
 
-        function monitorar() {
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2&_=${new Date().getTime()}`)
-            .then(r => r.text()).then(t => {
-                // Limpa JSON se houver
-                let data = t.replace(/[\[\]"{} ]/g, "").replace("V2:", "");
-                
-                if (data.length > 5 && !data.includes("NORMALIZADO")) {
-                    const box = document.getElementById('logs');
-                    
-                    // Se for uma lista de eventos (vários \n)
-                    if (t.includes("\n")) {
-                        box.innerHTML = "";
-                        t.split('\n').reverse().forEach(linha => {
-                            if(linha.trim().length > 5) {
-                                box.innerHTML += `<div class="log-box">${linha}</div>`;
-                            }
-                        });
+                    const card = document.getElementById('cartao');
+                    const texto = document.getElementById('status-texto');
+                    texto.innerText = status;
+
+                    let s = status.toUpperCase();
+                    if (s.includes("FIRE") || s.includes("FOGO") || s.includes("ALARM")) {
+                        card.style.borderTopColor = "#ff0000"; texto.style.color = "#ff0000";
+                    } else if (s.includes("FAULT") || s.includes("FALHA")) {
+                        card.style.borderTopColor = "#ffcc00"; texto.style.color = "#ffcc00";
+                    } else {
+                        card.style.borderTopColor = "#00ff7f"; texto.style.color = "#00ff7f";
                     }
-                }
-            });
+                });
         }
-        
-        setInterval(monitorar, 3000);
+        setInterval(atualizar, 2000);
+        atualizar();
     </script>
 </body>
 </html>
