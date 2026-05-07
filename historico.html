@@ -6,17 +6,16 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 20px; text-align: center; }
         .panel { background: #151515; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; }
-        input[type="date"] { background: #222; color: #fff; border: 1px solid #444; padding: 10px; width: 80%; border-radius: 5px; }
-        .btn { background: #007bff; color: #fff; border: none; padding: 12px; border-radius: 5px; width: 80%; margin-bottom: 10px; font-weight: bold; cursor: pointer; }
-        .log-box { background: #1a1a1a; padding: 15px; border-radius: 10px; text-align: left; border-left: 5px solid #0af; margin-top: 10px; font-family: monospace; }
-        .btn-voltar { color: #888; text-decoration: none; display: block; margin-bottom: 20px; }
+        .log-box { background: #1a1a1a; padding: 12px; border-radius: 8px; text-align: left; border-left: 5px solid #0af; margin-top: 8px; font-family: monospace; font-size: 14px; }
+        .btn { background: #007bff; color: #fff; border: none; padding: 12px; border-radius: 5px; width: 100%; max-width: 300px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
+        input[type="date"] { background: #222; color: #fff; border: 1px solid #444; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <a href="index.html" class="btn-voltar">← Voltar ao Painel Principal</a>
+    <a href="index.html" style="color: #888; text-decoration: none;">← Voltar</a>
+    <h2>HISTÓRICO DE EVENTOS</h2>
     <div class="panel">
-        <button class="btn" onclick="lerTudo()">CARREGAR TODA A MEMÓRIA</button>
-        <p>Ou busque por uma data:</p>
+        <button class="btn" onclick="lerTudo()">BUSCAR TODOS OS EVENTOS</button><br>
         <input type="date" id="dataBusca" onchange="buscar()">
     </div>
     <div id="logs"></div>
@@ -25,32 +24,30 @@
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
         function lerTudo() {
-            document.getElementById('logs').innerHTML = "Solicitando memória...";
+            document.getElementById('logs').innerHTML = "Carregando memória...";
             fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`);
         }
 
         function buscar() {
             let d = document.getElementById('dataBusca').value;
             if(!d) return;
-            let partes = d.split('-');
-            let dataFormatada = partes[2] + '/' + partes[1] + '/' + partes[0].substring(2);
-            document.getElementById('logs').innerHTML = "Buscando data: " + dataFormatada;
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=${dataFormatada}`);
+            let p = d.split('-');
+            let df = p[2] + '/' + p[1] + '/' + p[0].substring(2);
+            document.getElementById('logs').innerHTML = "Buscando data...";
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=${df}`);
         }
 
         function monitorar() {
             fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2`)
             .then(r => r.text()).then(t => {
                 let data = t.replace(/[\[\]"{} ]/g, "").replace("V2:", "");
-                if (data.length > 5) {
+                if (data.length > 5 && !data.includes("SISTEMAONLINE")) {
                     const box = document.getElementById('logs');
                     if (data.includes("\n")) {
                         box.innerHTML = "";
                         data.split('\n').reverse().forEach(linha => {
                             if(linha.length > 5) box.innerHTML += `<div class="log-box">${linha}</div>`;
                         });
-                    } else {
-                        box.innerHTML = `<div class="log-box">${data}</div>`;
                     }
                 }
             });
