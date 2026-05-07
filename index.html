@@ -2,81 +2,54 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Painel Real-Time</title>
+    <title>CF SISTEMAS - Real Time</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; }
-        h1 { margin-top: 30px; letter-spacing: 2px; }
-        
-        /* Layout Industrial com Baixo Relevo Inset */
         .status-card {
-            background: #1a1a1a; padding: 60px 20px; border-radius: 20px; margin-top: 40px;
+            background: #1a1a1a; padding: 60px 20px; border-radius: 20px; margin: 50px auto; max-width: 450px;
             box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
-            border-top: 6px solid #00ff7f; transition: 0.5s;
+            border-top: 6px solid #00ff7f; transition: 0.4s;
         }
-
-        #status-texto { font-size: 28px; font-weight: bold; text-transform: uppercase; line-height: 1.4; }
-        
-        .nav-btn {
-            display: inline-block; margin-top: 50px; padding: 18px 45px;
-            background: #222; color: #0af; text-decoration: none;
-            border-radius: 12px; border: 1px solid #333; font-weight: bold;
-        }
+        #status-texto { font-size: 28px; font-weight: bold; }
+        .nav-btn { display: inline-block; padding: 15px 40px; background: #222; color: #0af; text-decoration: none; border-radius: 10px; border: 1px solid #333; font-weight: bold; margin-top: 20px;}
     </style>
 </head>
 <body>
-
-    <div class="container">
-        <h1>CF SISTEMAS</h1>
-        <div id="cartao" class="status-card">
-            <div id="status-texto">SINCRONIZANDO...</div>
-        </div>
-        <a href="historico.html" class="nav-btn">VER HISTÓRICO COMPLETO</a>
+    <h1>CF SISTEMAS</h1>
+    <div id="cartao" class="status-card">
+        <div id="status-texto">SINCRONIZANDO...</div>
     </div>
+    <a href="historico.html" class="nav-btn">VER HISTÓRICO COMPLETO</a>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
-        // Limpa resíduos de JSON (aspas, chaves, colchetes)
-        function limparDado(t) {
+        function limpar(t) {
             return t.replace(/[\[\]"{} ]/g, "").replace("V1:", "");
         }
 
         function atualizar() {
-            // O sinal de timestamp (_=) força o site a buscar o dado real da central no servidor
-            const URL = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${new Date().getTime()}`;
+            // Timestamp para evitar cache
+            const url = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${new Date().getTime()}`;
             
-            fetch(URL)
-                .then(r => r.text())
-                .then(t => {
-                    let status = limparDado(t);
-                    
-                    // Se o texto for muito longo (histórico), a index ignora
-                    if (status.length > 40) return;
+            fetch(url).then(r => r.text()).then(t => {
+                let status = limpar(t);
+                if(status.length > 30) return;
 
-                    const card = document.getElementById('cartao');
-                    const texto = document.getElementById('status-texto');
-                    
-                    texto.innerText = status;
+                const texto = document.getElementById('status-texto');
+                const cartao = document.getElementById('cartao');
+                texto.innerText = status;
 
-                    let s = status.toUpperCase();
-                    // Lógica de cores automática conforme a mensagem da Notifier
-                    if (s.includes("FIRE") || s.includes("ALARM") || s.includes("FOGO")) {
-                        card.style.borderTopColor = "#ff0000"; texto.style.color = "#ff0000";
-                    } 
-                    else if (s.includes("FAULT") || s.includes("FALHA")) {
-                        card.style.borderTopColor = "#ffcc00"; texto.style.color = "#ffcc00";
-                    } 
-                    else {
-                        card.style.borderTopColor = "#00ff7f"; texto.style.color = "#00ff7f";
-                    }
-                })
-                .catch(err => {
-                    document.getElementById('status-texto').innerText = "CENTRAL OFFLINE";
-                });
+                let sU = status.toUpperCase();
+                if (sU.includes("FIRE") || sU.includes("FOGO") || sU.includes("ALARM")) {
+                    cartao.style.borderTopColor = "#f00"; texto.style.color = "#f00";
+                } else if (sU.includes("FAULT") || sU.includes("FALHA")) {
+                    cartao.style.borderTopColor = "#fc0"; texto.style.color = "#fc0";
+                } else {
+                    cartao.style.borderTopColor = "#0f7"; texto.style.color = "#0f7";
+                }
+            });
         }
-
         setInterval(atualizar, 2000);
         atualizar();
     </script>
