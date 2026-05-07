@@ -2,56 +2,68 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>CF SISTEMAS - Real Time</title>
+    <title>CF SISTEMAS - Histórico</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
-        .status-card {
-            background: #1a1a1a; padding: 60px 20px; border-radius: 20px; margin: 50px auto; max-width: 450px;
-            box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
-            border-top: 6px solid #00ff7f; transition: 0.4s;
-        }
-        #status-texto { font-size: 28px; font-weight: bold; }
-        .nav-btn { display: inline-block; padding: 15px 40px; background: #222; color: #0af; text-decoration: none; border-radius: 10px; border: 1px solid #333; font-weight: bold; margin-top: 20px;}
+        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 20px; text-align: center; }
+        .panel { background: #151515; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; max-width: 500px; margin-left: auto; margin-right: auto; }
+        .log-box { background: #1a1a1a; padding: 12px; border-radius: 8px; text-align: left; border-left: 5px solid #0af; margin: 8px auto; font-family: monospace; font-size: 14px; max-width: 500px; box-shadow: inset 2px 2px 5px #000; }
+        .btn { background: #007bff; color: #fff; border: none; padding: 15px; border-radius: 8px; width: 100%; cursor: pointer; font-weight: bold; margin-bottom: 15px; }
+        input[type="date"] { background: #222; color: #fff; border: 1px solid #444; padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; }
+        .btn-voltar { color: #888; text-decoration: none; display: block; margin-bottom: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>CF SISTEMAS</h1>
-    <div id="cartao" class="status-card">
-        <div id="status-texto">SINCRONIZANDO...</div>
+    <a href="index.html" class="btn-voltar">← VOLTAR AO PAINEL</a>
+    <h2>HISTÓRICO DE EVENTOS</h2>
+    
+    <div class="panel">
+        <button class="btn" onclick="solicitarTudo()">CARREGAR TODOS OS EVENTOS</button>
+        <p style="font-size: 12px; color: #666;">OU FILTRAR POR DATA:</p>
+        <input type="date" id="dataBusca" onchange="buscarData()">
     </div>
-    <a href="historico.html" class="nav-btn">VER HISTÓRICO COMPLETO</a>
+
+    <div id="logs"></div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
-        function limpar(t) {
-            return t.replace(/[\[\]"{} ]/g, "").replace("V1:", "");
+        function solicitarTudo() {
+            document.getElementById('logs').innerHTML = "<div class='log-box'>Solicitando memória interna... aguarde.</div>";
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`);
         }
 
-        function atualizar() {
-            // Timestamp para evitar cache
-            const url = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${new Date().getTime()}`;
-            
-            fetch(url).then(r => r.text()).then(t => {
-                let status = limpar(t);
-                if(status.length > 30) return;
+        function buscarData() {
+            let d = document.getElementById('dataBusca').value;
+            if(!d) return;
+            let p = d.split('-');
+            let df = p[2] + '/' + p[1] + '/' + p[0].substring(2); // DD/MM/AA
+            document.getElementById('logs').innerHTML = `<div class='log-box'>Buscando eventos de ${df}...</div>`;
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=${df}`);
+        }
 
-                const texto = document.getElementById('status-texto');
-                const cartao = document.getElementById('cartao');
-                texto.innerText = status;
-
-                let sU = status.toUpperCase();
-                if (sU.includes("FIRE") || sU.includes("FOGO") || sU.includes("ALARM")) {
-                    cartao.style.borderTopColor = "#f00"; texto.style.color = "#f00";
-                } else if (sU.includes("FAULT") || sU.includes("FALHA")) {
-                    cartao.style.borderTopColor = "#fc0"; texto.style.color = "#fc0";
-                } else {
-                    cartao.style.borderTopColor = "#0f7"; texto.style.color = "#0f7";
+        function monitorar() {
+            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2&_=${new Date().getTime()}`)
+            .then(r => r.text()).then(t => {
+                // Limpa JSON se houver
+                let data = t.replace(/[\[\]"{} ]/g, "").replace("V2:", "");
+                
+                if (data.length > 5 && !data.includes("NORMALIZADO")) {
+                    const box = document.getElementById('logs');
+                    
+                    // Se for uma lista de eventos (vários \n)
+                    if (t.includes("\n")) {
+                        box.innerHTML = "";
+                        t.split('\n').reverse().forEach(linha => {
+                            if(linha.trim().length > 5) {
+                                box.innerHTML += `<div class="log-box">${linha}</div>`;
+                            }
+                        });
+                    }
                 }
             });
         }
-        setInterval(atualizar, 2000);
-        atualizar();
+        
+        setInterval(monitorar, 3000);
     </script>
 </body>
 </html>
