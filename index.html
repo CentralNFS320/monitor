@@ -7,14 +7,13 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
-        h1 { margin-top: 30px; letter-spacing: 2px; }
         .status-card {
-            background: #1a1a1a; padding: 50px 20px; border-radius: 20px; margin-top: 30px;
+            background: #1a1a1a; padding: 50px 20px; border-radius: 20px; margin-top: 50px;
             box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
             border-top: 6px solid #00ff7f; transition: 0.4s;
         }
         #status-texto { font-size: 28px; font-weight: bold; }
-        #ultima-msg { font-size: 13px; color: #444; margin-top: 25px; font-family: monospace; }
+        #ultima-msg { font-size: 14px; color: #444; margin-top: 25px; font-family: monospace; }
         .nav-btn {
             display: inline-block; margin-top: 40px; padding: 15px 40px;
             background: #222; color: #0af; text-decoration: none;
@@ -33,25 +32,27 @@
     </div>
 
     <script>
-        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
+        const TOKEN = "aLLr6CClMLHVu_8TmmF6EcG8vZQ5aBa";
 
-        function limparJSON(texto) {
-            // Se o texto vier como {"V1":"texto"}, essa função deixa apenas: texto
+        // Função crucial: Limpa o JSON e deixa apenas o texto puro
+        function tratarResposta(t) {
             try {
-                const obj = JSON.parse(texto);
-                return Object.values(obj)[0];
+                const parseado = JSON.parse(t);
+                if (Array.isArray(parseado)) return parseado[0];
+                if (typeof parseado === 'object') return Object.values(parseado)[0];
+                return parseado;
             } catch (e) {
-                return texto.replace(/["{}]/g, ""); // Remove aspas e chaves se falhar o parse
+                return t.replace(/[\[\]"{} ]/g, "").replace("V1:", "").replace("V2:", "");
             }
         }
 
-        function consultarBlynk() {
-            const nocache = "&_=" + new Date().getTime();
+        function atualizar() {
+            const cache = "&_=" + new Date().getTime();
             
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1${nocache}`)
+            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1${cache}`)
                 .then(r => r.text())
-                .then(rawStatus => {
-                    let status = limparJSON(rawStatus); // LIMPA O TEXTO AQUI
+                .then(raw => {
+                    let status = tratarResposta(raw);
                     const cartao = document.getElementById('cartao');
                     const texto = document.getElementById('status-texto');
                     texto.innerText = status;
@@ -66,15 +67,15 @@
                     }
                 });
 
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2${nocache}`)
+            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2${cache}`)
                 .then(r => r.text())
-                .then(rawMsg => {
-                    let msg = limparJSON(rawMsg);
+                .then(raw => {
+                    let msg = tratarResposta(raw);
                     if(msg.length > 2) document.getElementById('ultima-msg').innerText = msg;
                 });
         }
-        setInterval(consultarBlynk, 2000);
-        consultarBlynk();
+        setInterval(atualizar, 2000);
+        atualizar();
     </script>
 </body>
 </html>
