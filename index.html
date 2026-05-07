@@ -2,77 +2,61 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Real Time</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; }
         .status-card {
             background: #1a1a1a; padding: 50px 20px; border-radius: 20px; margin-top: 50px;
             box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
             border-top: 6px solid #00ff7f; transition: 0.4s;
         }
         #status-texto { font-size: 28px; font-weight: bold; }
-        #ultima-msg { font-size: 14px; color: #444; margin-top: 25px; font-family: monospace; }
+        #ultima-msg { font-size: 14px; color: #555; margin-top: 30px; font-family: monospace; }
         .nav-btn {
-            display: inline-block; margin-top: 40px; padding: 15px 40px;
+            display: inline-block; margin-top: 50px; padding: 15px 40px;
             background: #222; color: #0af; text-decoration: none;
             border-radius: 10px; border: 1px solid #333; font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>CF SISTEMAS</h1>
-        <div id="cartao" class="status-card">
-            <div id="status-texto">SINCRONIZANDO...</div>
-            <div id="ultima-msg">Aguardando dados...</div>
-        </div>
-        <a href="historico.html" class="nav-btn">PÁGINA DE HISTÓRICO</a>
+    <h1>CF SISTEMAS</h1>
+    <div id="cartao" class="status-card">
+        <div id="status-texto">CONECTANDO...</div>
+        <div id="ultima-msg">Aguardando dados da central...</div>
     </div>
+    <a href="historico.html" class="nav-btn">PÁGINA DE HISTÓRICO</a>
 
     <script>
-        const TOKEN = "aLLr6CClMLHVu_8TmmF6EcG8vZQ5aBa";
+        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
-        // Função crucial: Limpa o JSON e deixa apenas o texto puro
-        function tratarResposta(t) {
-            try {
-                const parseado = JSON.parse(t);
-                if (Array.isArray(parseado)) return parseado[0];
-                if (typeof parseado === 'object') return Object.values(parseado)[0];
-                return parseado;
-            } catch (e) {
-                return t.replace(/[\[\]"{} ]/g, "").replace("V1:", "").replace("V2:", "");
-            }
+        function limparDado(texto) {
+            // Remove chaves e aspas caso o Blynk envie como JSON
+            return texto.replace(/[\[\]"{} ]/g, "").replace("V1:", "").replace("V2:", "");
         }
 
         function atualizar() {
-            const cache = "&_=" + new Date().getTime();
+            const URL_BASE = `https://blynk.cloud/external/api/get?token=${TOKEN}`;
             
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1${cache}`)
-                .then(r => r.text())
-                .then(raw => {
-                    let status = tratarResposta(raw);
-                    const cartao = document.getElementById('cartao');
-                    const texto = document.getElementById('status-texto');
-                    texto.innerText = status;
+            fetch(URL_BASE + "&V1").then(r => r.text()).then(t => {
+                let status = limparDado(t);
+                document.getElementById('status-texto').innerText = status;
+                const c = document.getElementById('cartao');
+                const s = status.toUpperCase();
+                
+                if (s.includes("FIRE") || s.includes("FOGO") || s.includes("ALARM")) {
+                    c.style.borderTopColor = "#f00"; document.getElementById('status-texto').style.color = "#f00";
+                } else if (s.includes("FAULT") || s.includes("FALHA")) {
+                    c.style.borderTopColor = "#fc0"; document.getElementById('status-texto').style.color = "#fc0";
+                } else {
+                    c.style.borderTopColor = "#0f7"; document.getElementById('status-texto').style.color = "#0f7";
+                }
+            });
 
-                    let s = status.toUpperCase();
-                    if (s.includes("FIRE") || s.includes("FOGO") || s.includes("ALARM")) {
-                        cartao.style.borderTopColor = "#ff0000"; texto.style.color = "#ff0000";
-                    } else if (s.includes("FAULT") || s.includes("FALHA")) {
-                        cartao.style.borderTopColor = "#ffcc00"; texto.style.color = "#ffcc00";
-                    } else {
-                        cartao.style.borderTopColor = "#00ff7f"; texto.style.color = "#00ff7f";
-                    }
-                });
-
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2${cache}`)
-                .then(r => r.text())
-                .then(raw => {
-                    let msg = tratarResposta(raw);
-                    if(msg.length > 2) document.getElementById('ultima-msg').innerText = msg;
-                });
+            fetch(URL_BASE + "&V2").then(r => r.text()).then(t => {
+                let msg = limparDado(t);
+                if(msg.length > 2) document.getElementById('ultima-msg').innerText = msg;
+            });
         }
         setInterval(atualizar, 2000);
         atualizar();
