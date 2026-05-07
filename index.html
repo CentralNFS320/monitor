@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>CF SISTEMAS - Painel Real-Time</title>
+    <title>CF SISTEMAS - Monitoramento</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
@@ -13,42 +13,52 @@
             box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
             border-top: 8px solid #00ff7f; transition: 0.5s;
         }
+
         #status-texto { font-size: 32px; font-weight: bold; text-transform: uppercase; }
         
         .nav-btn {
-            display: inline-block; margin-top: 60px; padding: 18px 45px;
+            display: inline-block; margin-top: 50px; padding: 18px 45px;
             background: #222; color: #0af; text-decoration: none;
             border-radius: 12px; border: 1px solid #333; font-weight: bold;
         }
     </style>
 </head>
 <body>
+
     <div class="container">
         <h1>CF SISTEMAS</h1>
         <div id="cartao" class="status-card">
             <div id="status-texto">SINCRONIZANDO...</div>
         </div>
-        <a href="historico.html" class="nav-btn">VER HISTÓRICO COMPLETO</a>
+        <a href="historico.html" class="nav-btn">PÁGINA DE HISTÓRICO</a>
     </div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
-        function tratar(t) {
-            // Remove qualquer resquício de JSON que o Blynk envie
+        function limpar(t) {
+            // Remove aspas, chaves e colchetes que o Blynk envia por padrão na API
             return t.replace(/[\[\]"{} ]/g, "").replace("V1:", "");
         }
 
         function atualizar() {
-            // Buscamos APENAS o V1. Ignoramos o V2 nesta página para não poluir.
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${new Date().getTime()}`)
+            // O sinal de "_" com o tempo garante que o navegador busque o dado real do servidor
+            const url = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${new Date().getTime()}`;
+            
+            fetch(url)
                 .then(r => r.text())
                 .then(t => {
-                    let status = tratar(t);
-                    if (status.length > 40) return; // Se por erro vier texto longo, ignora.
+                    let status = limpar(t);
+                    
+                    // Se o texto for maior que 30 caracteres, a Index ignora (proteção contra o V2)
+                    if (status.length > 30) return;
 
                     const card = document.getElementById('cartao');
                     const texto = document.getElementById('status-texto');
+                    
+                    // Se o status vier vazio ou nulo, coloca como OK
+                    if(!status || status === "null") status = "CENTRAL NFS320 OK";
+
                     texto.innerText = status;
 
                     let s = status.toUpperCase();
@@ -59,8 +69,12 @@
                     } else {
                         card.style.borderTopColor = "#00ff7f"; texto.style.color = "#00ff7f";
                     }
+                })
+                .catch(err => {
+                    document.getElementById('status-texto').innerText = "CONEXÃO REPROVADA";
                 });
         }
+
         setInterval(atualizar, 2000);
         atualizar();
     </script>
