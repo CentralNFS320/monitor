@@ -5,30 +5,38 @@
     <title>CF SISTEMAS - Real Time</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h1 { margin-top: 30px; letter-spacing: 2px; }
         .status-card {
-            background: #1a1a1a; padding: 60px 20px; border-radius: 20px; margin: 50px auto; max-width: 450px;
+            background: #1a1a1a; padding: 60px 20px; border-radius: 20px; margin-top: 40px;
             box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
             border-top: 8px solid #00ff7f; transition: 0.4s;
         }
         #status-texto { font-size: 32px; font-weight: bold; text-transform: uppercase; }
-        .nav-btn { display: inline-block; padding: 15px 40px; background: #222; color: #0af; text-decoration: none; border-radius: 10px; border: 1px solid #333; font-weight: bold; margin-top: 20px;}
+        .nav-btn { display: inline-block; padding: 15px 40px; background: #222; color: #0af; text-decoration: none; border-radius: 10px; border: 1px solid #333; font-weight: bold; margin-top: 30px; }
     </style>
 </head>
 <body>
-    <h1>CF SISTEMAS</h1>
-    <div id="cartao" class="status-card">
-        <div id="status-texto">SINCRONIZANDO...</div>
+    <div class="container">
+        <h1>CF SISTEMAS</h1>
+        <div id="cartao" class="status-card">
+            <div id="status-texto">SINCRONIZANDO...</div>
+        </div>
+        <a href="historico.html" class="nav-btn">VER HISTÓRICO COMPLETO</a>
     </div>
-    <a href="historico.html" class="nav-btn">PÁGINA DE HISTÓRICO</a>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
+
         function atualizar() {
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${new Date().getTime()}`)
+            // O timestamp força o site a pegar o dado real que você digitou na serial agora
+            const nocache = "&_=" + new Date().getTime();
+            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1${nocache}`)
                 .then(r => r.text())
                 .then(t => {
+                    // Remove aspas e chaves do JSON
                     let s = t.replace(/[\[\]"{} ]/g, "").replace("V1:", "");
-                    if (s.length > 40) return; // Segurança contra histórico
+                    if (s.length > 40) return;
 
                     const texto = document.getElementById('status-texto');
                     const cartao = document.getElementById('cartao');
