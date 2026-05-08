@@ -1,98 +1,52 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Real Time</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; }
-        
-        .status-card {
-            background: #1a1a1a; padding: 60px 20px; border-radius: 20px; margin: 50px auto;
-            box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
-            border-top: 8px solid #00ff7f; transition: 0.4s;
-            min-height: 100px; display: flex; align-items: center; justify-content: center;
-        }
+<script>
+    const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
+    const URL_API = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1`;
 
-        #status-texto { font-size: 24px; font-weight: bold; text-transform: uppercase; line-height: 1.4; }
-        
-        .nav-btn { 
-            display: inline-block; padding: 15px 40px; background: #222; color: #0af; 
-            text-decoration: none; border-radius: 10px; border: 1px solid #333; 
-            font-weight: bold; margin-top: 20px; transition: 0.3s;
-        }
-        .nav-btn:hover { background: #333; border-color: #0af; }
+    function atualizar() {
+        fetch(`${URL_API}&_=${new Date().getTime()}`)
+            .then(response => response.text())
+            .then(data => {
+                // --- LIMPEZA AVANÇADA ---
+                // Remove [" "], remove { }, remove o prefixo V1: e aspas
+                let mensagem = data.replace(/[\[\]"{}]/g, "") // Remove chaves, colchetes e aspas
+                                   .replace(/^V1:/, "")       // Remove o texto V1: se ele vier no início
+                                   .trim();                   // Remove espaços vazios nas pontas
 
-        /* Animação para Alarme/Fogo */
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
-            70% { box-shadow: 0 0 0 20px rgba(255, 0, 0, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
-        }
-        .alarme-ativo { animation: pulse-red 1.5s infinite; border-top-color: #f00 !important; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1 style="color: #0af;">CF SISTEMAS</h1>
-        <p style="font-size: 12px; color: #666;">Monitoramento NFS-320</p>
-        
-        <div id="cartao" class="status-card">
-            <div id="status-texto">CONECTANDO À CENTRAL...</div>
-        </div>
-        
-        <a href="historico.html" class="nav-btn">📜 VER HISTÓRICO COMPLETO</a>
-    </div>
+                if (!mensagem || mensagem === "") {
+                    mensagem = "AGUARDANDO CENTRAL...";
+                }
 
-    <script>
-        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        // URL da API do Blynk para o Pino V1 (Status)
-        const URL_API = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1`;
+                const textoElemento = document.getElementById('status-texto');
+                const cartaoElemento = document.getElementById('cartao');
+                
+                // Exibe a mensagem (Data, Hora e Evento que a central enviou)
+                textoElemento.innerText = mensagem;
 
-        function atualizar() {
-            // Adicionamos um timestamp para evitar que o navegador use o cache
-            fetch(`${URL_API}&_=${new Date().getTime()}`)
-                .then(response => response.text())
-                .then(data => {
-                    // Limpeza: Remove aspas extras que o Blynk às vezes envia, mas MANTÉM espaços
-                    let mensagem = data.replace(/["\[\]]/g, "").trim();
-                    
-                    if (!mensagem || mensagem === "") mensagem = "AGUARDANDO DADOS...";
+                let msgUpper = mensagem.toUpperCase();
 
-                    const textoElemento = document.getElementById('status-texto');
-                    const cartaoElemento = document.getElementById('cartao');
-                    
-                    textoElemento.innerText = mensagem;
+                // Lógica de Cores e Alerta
+                if (msgUpper.includes("FIRE") || msgUpper.includes("FOGO") || msgUpper.includes("ALARM") || msgUpper.includes("INCENDIO")) {
+                    cartaoElemento.style.borderTopColor = "#ff0000";
+                    textoElemento.style.color = "#ff0000";
+                    cartaoElemento.classList.add("alarme-ativo");
+                } 
+                else if (msgUpper.includes("FAULT") || msgUpper.includes("FALHA") || msgUpper.includes("TROUBLE")) {
+                    cartaoElemento.style.borderTopColor = "#ffcc00";
+                    textoElemento.style.color = "#ffcc00";
+                    cartaoElemento.classList.remove("alarme-ativo");
+                } 
+                else {
+                    cartaoElemento.style.borderTopColor = "#00ff7f";
+                    textoElemento.style.color = "#00ff7f";
+                    cartaoElemento.classList.remove("alarme-ativo");
+                }
+            })
+            .catch(err => {
+                console.error("Erro:", err);
+                document.getElementById('status-texto').innerText = "ERRO DE CONEXÃO";
+            });
+    }
 
-                    let msgUpper = mensagem.toUpperCase();
-
-                    // Lógica de Cores baseada na mensagem real da NFS-320
-                    if (msgUpper.includes("FIRE") || msgUpper.includes("FOGO") || msgUpper.includes("ALARM") || msgUpper.includes("INCENDIO")) {
-                        cartaoElemento.style.borderTopColor = "#ff0000";
-                        textoElemento.style.color = "#ff0000";
-                        cartaoElemento.classList.add("alarme-ativo");
-                    } 
-                    else if (msgUpper.includes("FAULT") || msgUpper.includes("FALHA") || msgUpper.includes("TROUBLE")) {
-                        cartaoElemento.style.borderTopColor = "#ffcc00";
-                        textoElemento.style.color = "#ffcc00";
-                        cartaoElemento.classList.remove("alarme-ativo");
-                    } 
-                    else {
-                        cartaoElemento.style.borderTopColor = "#00ff7f";
-                        textoElemento.style.color = "#00ff7f";
-                        cartaoElemento.classList.remove("alarme-ativo");
-                    }
-                })
-                .catch(err => {
-                    console.error("Erro ao buscar dados:", err);
-                    document.getElementById('status-texto').innerText = "ERRO DE CONEXÃO";
-                });
-        }
-
-        // Atualiza a cada 2 segundos para não sobrecarregar a API Free do Blynk
-        setInterval(atualizar, 2000);
-        atualizar();
-    </script>
-</body>
-</html>
+    setInterval(atualizar, 2000);
+    atualizar();
+</script>
