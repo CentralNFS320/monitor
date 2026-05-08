@@ -2,57 +2,97 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>CF SISTEMAS - Histórico</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico - CF SISTEMAS</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 20px; text-align: center; }
-        .panel { background: #151515; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; }
-        .log-box { background: #1a1a1a; padding: 12px; border-radius: 8px; text-align: left; border-left: 5px solid #0af; margin-top: 8px; font-family: monospace; font-size: 14px; }
-        .btn { background: #007bff; color: #fff; border: none; padding: 12px; border-radius: 5px; width: 100%; max-width: 300px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
-        input[type="date"] { background: #222; color: #fff; border: 1px solid #444; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+        body { font-family: 'Courier New', monospace; background: #0a0a0a; color: #00ff41; padding: 20px; text-align: center; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h2 { font-family: Arial, sans-serif; color: white; }
+        
+        .log-box { 
+            background: #000; border: 1px solid #333; padding: 15px; 
+            height: 450px; overflow-y: auto; text-align: left; 
+            white-space: pre-wrap; font-size: 14px; border-radius: 10px;
+            box-shadow: inset 0 0 10px #000; margin-bottom: 20px;
+        }
+
+        .controls { margin-bottom: 20px; display: flex; gap: 10px; justify-content: center; }
+        input { padding: 10px; border-radius: 5px; border: 1px solid #444; background: #222; color: white; flex: 1; }
+        
+        button { 
+            padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; 
+            font-weight: bold; transition: 0.3s;
+        }
+        .btn-load { background: #0af; color: white; }
+        .btn-search { background: #555; color: white; }
+        .btn-back { background: #444; color: white; text-decoration: none; display: inline-block; padding: 10px 20px; }
+        
+        button:hover { opacity: 0.8; }
     </style>
 </head>
 <body>
-    <a href="index.html" style="color: #888; text-decoration: none;">← Voltar</a>
-    <h2>HISTÓRICO DE EVENTOS</h2>
-    <div class="panel">
-        <button class="btn" onclick="lerTudo()">BUSCAR TODOS OS EVENTOS</button><br>
-        <input type="date" id="dataBusca" onchange="buscar()">
+    <div class="container">
+        <h2>📜 HISTÓRICO DE EVENTOS</h2>
+        
+        <div class="controls">
+            <input type="text" id="campoBusca" placeholder="Ex: 07/05 ou ALARME">
+            <button class="btn-search" onclick="buscar()">BUSCAR</button>
+        </div>
+
+        <div class="log-box" id="log-content">Aguardando comando...</div>
+
+        <div class="controls">
+            <button class="btn-load" onclick="carregarTudo()">CARREGAR TUDO</button>
+            <a href="index.html" class="btn-back">VOLTAR</a>
+        </div>
     </div>
-    <div id="logs"></div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
-        function lerTudo() {
-            document.getElementById('logs').innerHTML = "Carregando memória...";
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`);
+        // Função para limpar a sujeira do Blynk (Chaves, Colchetes, V1/V2)
+        function limparDados(bruto) {
+            return bruto
+                .replace(/[\[\]"{}]/g, "") // Remove [ ] " { }
+                .replace(/^V\d+:/, "")      // Remove V1: ou V2: no início
+                .trim();
+        }
+
+        function carregarTudo() {
+            document.getElementById('log-content').innerText = "Solicitando dados ao ESP32...";
+            
+            // Envia 1 para o V3 no ESP32 para ele disparar o histórico para o V2
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`)
+                .then(() => {
+                    // Aguarda 1.5s para o ESP32 processar e lê o V2
+                    setTimeout(() => {
+                        fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2`)
+                            .then(r => r.text())
+                            .then(t => {
+                                document.getElementById('log-content').innerText = limparDados(t);
+                            });
+                    }, 1500);
+                });
         }
 
         function buscar() {
-            let d = document.getElementById('dataBusca').value;
-            if(!d) return;
-            let p = d.split('-');
-            let df = p[2] + '/' + p[1] + '/' + p[0].substring(2);
-            document.getElementById('logs').innerHTML = "Buscando data...";
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=${df}`);
-        }
+            const termo = document.getElementById('campoBusca').value;
+            if(!termo) return;
+            
+            document.getElementById('log-content').innerText = "Buscando...";
 
-        function monitorar() {
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2`)
-            .then(r => r.text()).then(t => {
-                let data = t.replace(/[\[\]"{} ]/g, "").replace("V2:", "");
-                if (data.length > 5 && !data.includes("SISTEMAONLINE")) {
-                    const box = document.getElementById('logs');
-                    if (data.includes("\n")) {
-                        box.innerHTML = "";
-                        data.split('\n').reverse().forEach(linha => {
-                            if(linha.length > 5) box.innerHTML += `<div class="log-box">${linha}</div>`;
-                        });
-                    }
-                }
-            });
+            // Envia o termo de busca para o V4 no ESP32
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=${termo}`)
+                .then(() => {
+                    setTimeout(() => {
+                        fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2`)
+                            .then(r => r.text())
+                            .then(t => {
+                                document.getElementById('log-content').innerText = limparDados(t);
+                            });
+                    }, 1500);
+                });
         }
-        setInterval(monitorar, 3000);
     </script>
 </body>
 </html>
