@@ -1,52 +1,98 @@
-<script>
-    const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-    const URL_API = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1`;
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico - CF SISTEMAS</title>
+    <style>
+        body { font-family: 'Courier New', monospace; background: #0a0a0a; color: #00ff41; padding: 20px; text-align: center; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h2 { font-family: Arial, sans-serif; color: white; }
+        
+        .log-box { 
+            background: #000; border: 1px solid #333; padding: 15px; 
+            height: 450px; overflow-y: auto; text-align: left; 
+            white-space: pre-wrap; font-size: 14px; border-radius: 10px;
+            box-shadow: inset 0 0 10px #000; margin-bottom: 20px;
+        }
 
-    function atualizar() {
-        fetch(`${URL_API}&_=${new Date().getTime()}`)
-            .then(response => response.text())
-            .then(data => {
-                // --- LIMPEZA AVANÇADA ---
-                // Remove [" "], remove { }, remove o prefixo V1: e aspas
-                let mensagem = data.replace(/[\[\]"{}]/g, "") // Remove chaves, colchetes e aspas
-                                   .replace(/^V1:/, "")       // Remove o texto V1: se ele vier no início
-                                   .trim();                   // Remove espaços vazios nas pontas
+        .controls { margin-bottom: 20px; display: flex; gap: 10px; justify-content: center; }
+        input { padding: 10px; border-radius: 5px; border: 1px solid #444; background: #222; color: white; flex: 1; }
+        
+        button { 
+            padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; 
+            font-weight: bold; transition: 0.3s;
+        }
+        .btn-load { background: #0af; color: white; }
+        .btn-search { background: #555; color: white; }
+        .btn-back { background: #444; color: white; text-decoration: none; display: inline-block; padding: 10px 20px; }
+        
+        button:hover { opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📜 HISTÓRICO DE EVENTOS</h2>
+        
+        <div class="controls">
+            <input type="text" id="campoBusca" placeholder="Ex: 07/05 ou ALARME">
+            <button class="btn-search" onclick="buscar()">BUSCAR</button>
+        </div>
 
-                if (!mensagem || mensagem === "") {
-                    mensagem = "AGUARDANDO CENTRAL...";
-                }
+        <div class="log-box" id="log-content">Aguardando comando...</div>
 
-                const textoElemento = document.getElementById('status-texto');
-                const cartaoElemento = document.getElementById('cartao');
-                
-                // Exibe a mensagem (Data, Hora e Evento que a central enviou)
-                textoElemento.innerText = mensagem;
+        <div class="controls">
+            <button class="btn-load" onclick="carregarTudo()">CARREGAR TUDO</button>
+            <a href="index.html" class="btn-back">VOLTAR</a>
+        </div>
+    </div>
 
-                let msgUpper = mensagem.toUpperCase();
+    <script>
+        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
-                // Lógica de Cores e Alerta
-                if (msgUpper.includes("FIRE") || msgUpper.includes("FOGO") || msgUpper.includes("ALARM") || msgUpper.includes("INCENDIO")) {
-                    cartaoElemento.style.borderTopColor = "#ff0000";
-                    textoElemento.style.color = "#ff0000";
-                    cartaoElemento.classList.add("alarme-ativo");
-                } 
-                else if (msgUpper.includes("FAULT") || msgUpper.includes("FALHA") || msgUpper.includes("TROUBLE")) {
-                    cartaoElemento.style.borderTopColor = "#ffcc00";
-                    textoElemento.style.color = "#ffcc00";
-                    cartaoElemento.classList.remove("alarme-ativo");
-                } 
-                else {
-                    cartaoElemento.style.borderTopColor = "#00ff7f";
-                    textoElemento.style.color = "#00ff7f";
-                    cartaoElemento.classList.remove("alarme-ativo");
-                }
-            })
-            .catch(err => {
-                console.error("Erro:", err);
-                document.getElementById('status-texto').innerText = "ERRO DE CONEXÃO";
-            });
-    }
+        // Função para limpar a sujeira do Blynk (Chaves, Colchetes, V1/V2)
+        function limparDados(bruto) {
+            return bruto
+                .replace(/[\[\]"{}]/g, "") // Remove [ ] " { }
+                .replace(/^V\d+:/, "")      // Remove V1: ou V2: no início
+                .trim();
+        }
 
-    setInterval(atualizar, 2000);
-    atualizar();
-</script>
+        function carregarTudo() {
+            document.getElementById('log-content').innerText = "Solicitando dados ao ESP32...";
+            
+            // Envia 1 para o V3 no ESP32 para ele disparar o histórico para o V2
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`)
+                .then(() => {
+                    // Aguarda 1.5s para o ESP32 processar e lê o V2
+                    setTimeout(() => {
+                        fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2`)
+                            .then(r => r.text())
+                            .then(t => {
+                                document.getElementById('log-content').innerText = limparDados(t);
+                            });
+                    }, 1500);
+                });
+        }
+
+        function buscar() {
+            const termo = document.getElementById('campoBusca').value;
+            if(!termo) return;
+            
+            document.getElementById('log-content').innerText = "Buscando...";
+
+            // Envia o termo de busca para o V4 no ESP32
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=${termo}`)
+                .then(() => {
+                    setTimeout(() => {
+                        fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2`)
+                            .then(r => r.text())
+                            .then(t => {
+                                document.getElementById('log-content').innerText = limparDados(t);
+                            });
+                    }, 1500);
+                });
+        }
+    </script>
+</body>
+</html>
