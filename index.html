@@ -2,52 +2,95 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Real Time</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
+        
         .status-card {
             background: #1a1a1a; padding: 60px 20px; border-radius: 20px; margin: 50px auto;
             box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
             border-top: 8px solid #00ff7f; transition: 0.4s;
+            min-height: 100px; display: flex; align-items: center; justify-content: center;
         }
-        #status-texto { font-size: 28px; font-weight: bold; text-transform: uppercase; }
-        .nav-btn { display: inline-block; padding: 15px 40px; background: #222; color: #0af; text-decoration: none; border-radius: 10px; border: 1px solid #333; font-weight: bold; margin-top: 20px;}
+
+        #status-texto { font-size: 24px; font-weight: bold; text-transform: uppercase; line-height: 1.4; }
+        
+        .nav-btn { 
+            display: inline-block; padding: 15px 40px; background: #222; color: #0af; 
+            text-decoration: none; border-radius: 10px; border: 1px solid #333; 
+            font-weight: bold; margin-top: 20px; transition: 0.3s;
+        }
+        .nav-btn:hover { background: #333; border-color: #0af; }
+
+        /* Animação para Alarme/Fogo */
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(255, 0, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+        }
+        .alarme-ativo { animation: pulse-red 1.5s infinite; border-top-color: #f00 !important; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>CF SISTEMAS</h1>
+        <h1 style="color: #0af;">CF SISTEMAS</h1>
+        <p style="font-size: 12px; color: #666;">Monitoramento NFS-320</p>
+        
         <div id="cartao" class="status-card">
-            <div id="status-texto">SINCRONIZANDO...</div>
+            <div id="status-texto">CONECTANDO À CENTRAL...</div>
         </div>
-        <a href="historico.html" class="nav-btn">VER HISTÓRICO COMPLETO</a>
+        
+        <a href="historico.html" class="nav-btn">📜 VER HISTÓRICO COMPLETO</a>
     </div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
+        // URL da API do Blynk para o Pino V1 (Status)
+        const URL_API = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1`;
+
         function atualizar() {
-            // Anti-cache e limpeza de JSON
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${new Date().getTime()}`)
-                .then(r => r.text())
-                .then(t => {
-                    let s = t.replace(/[\[\]"{} ]/g, "").replace("V1:", "");
-                    if (s.length > 50) return;
+            // Adicionamos um timestamp para evitar que o navegador use o cache
+            fetch(`${URL_API}&_=${new Date().getTime()}`)
+                .then(response => response.text())
+                .then(data => {
+                    // Limpeza: Remove aspas extras que o Blynk às vezes envia, mas MANTÉM espaços
+                    let mensagem = data.replace(/["\[\]]/g, "").trim();
+                    
+                    if (!mensagem || mensagem === "") mensagem = "AGUARDANDO DADOS...";
 
-                    const texto = document.getElementById('status-texto');
-                    const cartao = document.getElementById('cartao');
-                    texto.innerText = s;
+                    const textoElemento = document.getElementById('status-texto');
+                    const cartaoElemento = document.getElementById('cartao');
+                    
+                    textoElemento.innerText = mensagem;
 
-                    let sU = s.toUpperCase();
-                    if (sU.includes("FIRE") || sU.includes("FOGO") || sU.includes("ALARM")) {
-                        cartao.style.borderTopColor = "#f00"; texto.style.color = "#f00";
-                    } else if (sU.includes("FAULT") || sU.includes("FALHA")) {
-                        cartao.style.borderTopColor = "#fc0"; texto.style.color = "#fc0";
-                    } else {
-                        cartao.style.borderTopColor = "#0f7"; texto.style.color = "#0f7";
+                    let msgUpper = mensagem.toUpperCase();
+
+                    // Lógica de Cores baseada na mensagem real da NFS-320
+                    if (msgUpper.includes("FIRE") || msgUpper.includes("FOGO") || msgUpper.includes("ALARM") || msgUpper.includes("INCENDIO")) {
+                        cartaoElemento.style.borderTopColor = "#ff0000";
+                        textoElemento.style.color = "#ff0000";
+                        cartaoElemento.classList.add("alarme-ativo");
+                    } 
+                    else if (msgUpper.includes("FAULT") || msgUpper.includes("FALHA") || msgUpper.includes("TROUBLE")) {
+                        cartaoElemento.style.borderTopColor = "#ffcc00";
+                        textoElemento.style.color = "#ffcc00";
+                        cartaoElemento.classList.remove("alarme-ativo");
+                    } 
+                    else {
+                        cartaoElemento.style.borderTopColor = "#00ff7f";
+                        textoElemento.style.color = "#00ff7f";
+                        cartaoElemento.classList.remove("alarme-ativo");
                     }
+                })
+                .catch(err => {
+                    console.error("Erro ao buscar dados:", err);
+                    document.getElementById('status-texto').innerText = "ERRO DE CONEXÃO";
                 });
         }
+
+        // Atualiza a cada 2 segundos para não sobrecarregar a API Free do Blynk
         setInterval(atualizar, 2000);
         atualizar();
     </script>
