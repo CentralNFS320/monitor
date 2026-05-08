@@ -3,96 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Histórico - CF SISTEMAS</title>
+    <title>CF SISTEMAS - Monitoramento</title>
     <style>
-        body { font-family: 'Courier New', monospace; background: #0a0a0a; color: #00ff41; padding: 20px; text-align: center; }
-        .container { max-width: 800px; margin: 0 auto; }
-        h2 { font-family: Arial, sans-serif; color: white; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
         
-        .log-box { 
-            background: #000; border: 1px solid #333; padding: 15px; 
-            height: 450px; overflow-y: auto; text-align: left; 
-            white-space: pre-wrap; font-size: 14px; border-radius: 10px;
-            box-shadow: inset 0 0 10px #000; margin-bottom: 20px;
+        h1 { color: #0af; margin-bottom: 5px; }
+        .sub-header { font-size: 14px; color: #666; margin-bottom: 30px; letter-spacing: 1px; }
+
+        .status-card {
+            background: #1a1a1a; padding: 50px 20px; border-radius: 20px; margin: 20px auto;
+            box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
+            border-top: 8px solid #00ff7f; transition: 0.4s;
+            min-height: 120px; display: flex; align-items: center; justify-content: center;
         }
 
-        .controls { margin-bottom: 20px; display: flex; gap: 10px; justify-content: center; }
-        input { padding: 10px; border-radius: 5px; border: 1px solid #444; background: #222; color: white; flex: 1; }
-        
-        button { 
-            padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; 
-            font-weight: bold; transition: 0.3s;
+        #status-texto { 
+            font-size: 22px; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            line-height: 1.4; 
+            word-wrap: break-word;
         }
-        .btn-load { background: #0af; color: white; }
-        .btn-search { background: #555; color: white; }
-        .btn-back { background: #444; color: white; text-decoration: none; display: inline-block; padding: 10px 20px; }
         
-        button:hover { opacity: 0.8; }
+        .nav-btn { 
+            display: inline-block; padding: 18px 40px; background: #222; color: #0af; 
+            text-decoration: none; border-radius: 12px; border: 1px solid #333; 
+            font-weight: bold; margin-top: 30px; transition: 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .nav-btn:hover { background: #0af; color: #fff; border-color: #fff; }
+
+        /* Animação para Alarme e Fogo */
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); background: #1a1a1a; }
+            50% { background: #300; }
+            70% { box-shadow: 0 0 0 25px rgba(255, 0, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); background: #1a1a1a; }
+        }
+        .alarme-ativo { animation: pulse-red 1.2s infinite; border-top-color: #f00 !important; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>📜 HISTÓRICO DE EVENTOS</h2>
+        <h1>CF SISTEMAS</h1>
+        <div class="sub-header">MONITORAMENTO NFS-320</div>
         
-        <div class="controls">
-            <input type="text" id="campoBusca" placeholder="Ex: 07/05 ou ALARME">
-            <button class="btn-search" onclick="buscar()">BUSCAR</button>
+        <div id="cartao" class="status-card">
+            <div id="status-texto">SINCRONIZANDO...</div>
         </div>
-
-        <div class="log-box" id="log-content">Aguardando comando...</div>
-
-        <div class="controls">
-            <button class="btn-load" onclick="carregarTudo()">CARREGAR TUDO</button>
-            <a href="index.html" class="btn-back">VOLTAR</a>
-        </div>
+        
+        <a href="historico.html" class="nav-btn">📜 VER HISTÓRICO COMPLETO</a>
     </div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
+        const URL_API = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1`;
 
-        // Função para limpar a sujeira do Blynk (Chaves, Colchetes, V1/V2)
-        function limparDados(bruto) {
-            return bruto
-                .replace(/[\[\]"{}]/g, "") // Remove [ ] " { }
-                .replace(/^V\d+:/, "")      // Remove V1: ou V2: no início
-                .trim();
-        }
+        function atualizar() {
+            // Fetch com timestamp para ignorar o cache do navegador
+            fetch(`${URL_API}&_=${new Date().getTime()}`)
+                .then(response => response.text())
+                .then(data => {
+                    
+                    // --- LIMPEZA DE DADOS (Remove V1, chaves, colchetes e aspas) ---
+                    let mensagem = data
+                        .replace(/[\[\]"{}]/g, "") // Remove [ ] " { }
+                        .replace(/^V1:/, "")       // Remove V1: se aparecer no início
+                        .trim();                   // Remove espaços nas pontas
 
-        function carregarTudo() {
-            document.getElementById('log-content').innerText = "Solicitando dados ao ESP32...";
-            
-            // Envia 1 para o V3 no ESP32 para ele disparar o histórico para o V2
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`)
-                .then(() => {
-                    // Aguarda 1.5s para o ESP32 processar e lê o V2
-                    setTimeout(() => {
-                        fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2`)
-                            .then(r => r.text())
-                            .then(t => {
-                                document.getElementById('log-content').innerText = limparDados(t);
-                            });
-                    }, 1500);
+                    if (!mensagem || mensagem === "") {
+                        mensagem = "AGUARDANDO CENTRAL...";
+                    }
+
+                    const textoElemento = document.getElementById('status-texto');
+                    const cartaoElemento = document.getElementById('cartao');
+                    
+                    // Exibe a mensagem limpa (Data e Hora já inclusos da central)
+                    textoElemento.innerText = mensagem;
+
+                    let msgUpper = mensagem.toUpperCase();
+
+                    // Lógica Visual de Alerta
+                    if (msgUpper.includes("FIRE") || msgUpper.includes("FOGO") || msgUpper.includes("ALARM") || msgUpper.includes("INCENDIO")) {
+                        cartaoElemento.style.borderTopColor = "#ff0000";
+                        textoElemento.style.color = "#ff0000";
+                        cartaoElemento.classList.add("alarme-ativo");
+                    } 
+                    else if (msgUpper.includes("FAULT") || msgUpper.includes("FALHA") || msgUpper.includes("TROUBLE")) {
+                        cartaoElemento.style.borderTopColor = "#ffcc00";
+                        textoElemento.style.color = "#ffcc00";
+                        cartaoElemento.classList.remove("alarme-ativo");
+                    } 
+                    else {
+                        cartaoElemento.style.borderTopColor = "#00ff7f";
+                        textoElemento.style.color = "#00ff7f";
+                        cartaoElemento.classList.remove("alarme-ativo");
+                    }
+                })
+                .catch(err => {
+                    console.error("Erro de Conexão:", err);
+                    document.getElementById('status-texto').innerText = "ERRO DE COMUNICAÇÃO";
                 });
         }
 
-        function buscar() {
-            const termo = document.getElementById('campoBusca').value;
-            if(!termo) return;
-            
-            document.getElementById('log-content').innerText = "Buscando...";
-
-            // Envia o termo de busca para o V4 no ESP32
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=${termo}`)
-                .then(() => {
-                    setTimeout(() => {
-                        fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2`)
-                            .then(r => r.text())
-                            .then(t => {
-                                document.getElementById('log-content').innerText = limparDados(t);
-                            });
-                    }, 1500);
-                });
-        }
+        // Atualização constante (2 segundos)
+        setInterval(atualizar, 2000);
+        atualizar(); // Chamada inicial imediata
     </script>
 </body>
 </html>
