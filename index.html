@@ -1,180 +1,101 @@
-#define BLYNK_TEMPLATE_ID "TMPL29Tvc7UMK"
-#define BLYNK_TEMPLATE_NAME "Monitor Incendio"
-#define BLYNK_AUTH_TOKEN "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa"
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor Incêndio - Real Time</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .painel {
+            text-align: center;
+            padding: 40px;
+            border-radius: 15px;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            transition: background-color 0.5s ease;
+            background-color: #222222; /* Cor inicial neutra */
+        }
+        h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .status-texto {
+            font-size: 20px;
+            font-weight: bold;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
 
-#include <WiFi.h>
-#include <WiFiManager.h>
-#include <BlynkSimpleEsp32.h>
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-#include "SPIFFS.h"
+    <div class="painel" id="painel-status">
+        <h1 id="titulo-sistema">CF SISTEMAS</h1>
+        <div class="status-texto" id="texto-notifier">Carregando dados da central...</div>
+    </div>
 
-#define RXD2 16  
-#define TXD2 17
-#define MAX_EVENTOS 800
+    <script>
+        // --- CONFIGURAÇÃO BLYNK ---
+        const BLYNK_TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa"; 
+        const PINO_STATUS = "V1"; 
 
-LiquidCrystal_I2C lcd(0x27, 16, 2); 
-String ultimaMensagem = "Aguardando Notifier...";
-String stringBufferSerial = "";
-int posScroll = 0;
-unsigned long tAnteriorScroll = 0;
-bool estadoLedHeartbeat = false;
-bool spiffsOk = false;
-int proximoIndex = 0; 
+        // Função utilitária de análise de texto idêntica à lógica do ESP32
+        function obterCorPorMensagem(mensagem) {
+            let mU = mensagem.toUpperCase();
+            
+            // 1. Prioridade Vermelha: Fogo ou Alarmes
+            if (mU.includes("FIRE") || mU.includes("ALARM") || mU.includes("FOGO") || mU.includes("INCENDIO")) {
+                return "#D32F2F"; // Vermelho escuro plano
+            }
+            // 2. Prioridade Amarela: Falhas, Avarias ou Desligamentos
+            if (mU.includes("FAULT") || mU.includes("FALHA") || mU.includes("TROUBLE") || mU.includes("AVARIA") || mU.includes("DESL")) {
+                return "#FBC02D"; // Amarelo plano escuro para contraste de texto branco
+            }
+            // 3. Prioridade Verde: Retorno ao normal ou Reset
+            if (mU.includes("NORMAL") || mU.includes("RESET") || mU.includes("RESTORE")) {
+                return "#388E3C"; // Verde plano
+            }
+            
+            return "#FBC02D"; // Padrão de atenção para dados indefinidos
+        }
 
-void carregarIndex() {
-  if (SPIFFS.exists("/index.txt")) {
-    File f = SPIFFS.open("/index.txt", "r");
-    if (f) {
-      proximoIndex = f.readStringUntil('\n').toInt();
-      f.close();
-    }
-  }
-  if (proximoIndex < 0 || proximoIndex >= MAX_EVENTOS) proximoIndex = 0;
-}
+        async function atualizarStatusTempoReal() {
+            // URL da API do Blynk IoT para obter valor de pino virtual
+            const url = blynk.cloud{BLYNK_TOKEN}&${PINO_STATUS};
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Erro na requisição API Blynk");
+                
+                const textoPuroCentral = await response.text();
+                const divTexto = document.getElementById("texto-notifier");
+                const divPainel = document.getElementById("painel-status");
 
-void salvarIndex() {
-  File f = SPIFFS.open("/index.txt", "w");
-  if (f) {
-    f.println(proximoIndex);
-    f.close();
-  }
-}
+                // Atualiza o texto na tela de forma fidedigna à central Notifier
+                divTexto.innerText = textoPuroCentral;
 
-// Gravação circular pura (não adiciona códigos de controle na mensagem)
-void gravarEventoCircular(String msg) {
-  if (!spiffsOk) return;
+                // Altera dinamicamente a cor de fundo do painel baseado nas palavras-chave encontradas
+                divPainel.style.backgroundColor = obterCorPorMensagem(textoPuroCentral);
 
-  String linhas[MAX_EVENTOS];
-  int totalLinhasExistentes = 0;
+            } catch (error) {
+                console.error("Falha ao sincronizar com o Blynk:", error);
+                document.getElementById("texto-notifier").innerText = "ERRO DE COMUNICAÇÃO REMOTA";
+                document.getElementById("painel-status").style.backgroundColor = "#555555";
+            }
+        }
 
-  if (SPIFFS.exists("/eventos.txt")) {
-    File f = SPIFFS.open("/eventos.txt", "r");
-    while (f.available() && totalLinhasExistentes < MAX_EVENTOS) {
-      linhas[totalLinhasExistentes] = f.readStringUntil('\n');
-      totalLinhasExistentes++;
-    }
-    f.close();
-  }
-
-  linhas[proximoIndex] = msg;
-  if (proximoIndex >= totalLinhasExistentes) {
-    totalLinhasExistentes = proximoIndex + 1;
-  }
-
-  proximoIndex++;
-  if (proximoIndex >= MAX_EVENTOS) proximoIndex = 0;
-  salvarIndex();
-
-  File f = SPIFFS.open("/eventos.txt", "w");
-  if (f) {
-    for (int i = 0; i < totalLinhasExistentes; i++) {
-      if (linhas[i].length() > 0) {
-        f.println(linhas[i]);
-      }
-    }
-    f.close();
-  }
-}
-
-void processar(String msg) {
-  msg.trim();
-  if (msg.length() < 2) return;
-
-  Serial.println("Central: " + msg);
-  ultimaMensagem = msg;
-  posScroll = 0; 
-
-  gravarEventoCircular(msg);
-
-  // Envia a mensagem limpa e pura para o Blynk (V1 e V2)
-  Blynk.virtualWrite(V1, msg);
-  Blynk.virtualWrite(V2, msg);
-}
-
-BLYNK_WRITE(V3) { 
-  if (param.asInt() == 1 && spiffsOk) {
-    File f = SPIFFS.open("/eventos.txt", "r");
-    if (!f) return;
-    while (f.available()) {
-      String linha = f.readStringUntil('\n');
-      Blynk.virtualWrite(V2, linha);
-      delay(25); // Delay seguro anti-bloqueio para a linha serial
-    }
-    f.close();
-  }
-}
-
-BLYNK_WRITE(V4) { 
-  if (!spiffsOk) return;
-  String busca = param.asStr();
-  File f = SPIFFS.open("/eventos.txt", "r");
-  if (!f) return;
-  Blynk.virtualWrite(V2, "RESULTADOS PARA: " + busca);
-  while (f.available()) {
-    String l = f.readStringUntil('\n');
-    if (l.indexOf(busca) >= 0) {
-      Blynk.virtualWrite(V2, l);
-      delay(25);
-    }
-  }
-  f.close();
-}
-
-void setup() {
-  Serial.begin(115200); 
-  Serial2.begin(9600, SERIAL_7E1, RXD2, TXD2); 
-  
-  lcd.init();
-  lcd.backlight();
-  lcd.setCursor(0, 0);
-  lcd.print("CF SISTEMAS");
-  
-  if (SPIFFS.begin(true)) {
-    spiffsOk = true;
-    carregarIndex(); 
-  }
-
-  WiFiManager wm;
-  wm.autoConnect("CF_SISTEMAS_AP");
-  
-  Blynk.config(BLYNK_AUTH_TOKEN);
-  Blynk.virtualWrite(V1, "CENTRAL ONLINE");
-  lcd.clear();
-}
-
-void loop() {
-  Blynk.run();
-  
-  while (Serial2.available() > 0) {
-    char c = Serial2.read();
-    if (c == '\r') {
-      processar(stringBufferSerial);
-      stringBufferSerial = "";
-    } else if (c != '\n') { 
-      stringBufferSerial += c;
-    }
-  }
-
-  if (millis() - tAnteriorScroll > 450) {
-    tAnteriorScroll = millis();
-    estadoLedHeartbeat = !estadoLedHeartbeat;
-    
-    lcd.setCursor(0, 0); 
-    lcd.print("* CF SISTEMAS *");
-    lcd.setCursor(15, 0);
-    lcd.print(estadoLedHeartbeat ? "." : " ");
-    
-    lcd.setCursor(0, 1);
-    if (ultimaMensagem.length() > 16) {
-      String m = ultimaMensagem + "   |   ";
-      for (int i = 0; i < 16; i++) {
-        lcd.print(m[(posScroll + i) % m.length()]);
-      }
-      posScroll++;
-    } else {
-      String p = ultimaMensagem + "                ";
-      lcd.print(p.substring(0, 16));
-    }
-  }
-}
+        // Executa imediatamente ao abrir e agenda atualizações a cada 3 segundos
+        atualizarStatusTempoReal();
+        setInterval(atualizarStatusTempoReal, 3000);
+    </script>
+</body>
+</html>
