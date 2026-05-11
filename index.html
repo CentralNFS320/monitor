@@ -30,27 +30,26 @@
             display: inline-block; padding: 18px 40px; background: #222; color: #0af; 
             text-decoration: none; border-radius: 12px; border: 1px solid #333; 
             font-weight: bold; margin-top: 30px; transition: 0.3s;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
         .nav-btn:hover { background: #0af; color: #fff; border-color: #fff; }
 
         /* Animação para Alarme e Fogo */
         @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); background: #1a1a1a; }
-            50% { background: #300; }
-            70% { box-shadow: 0 0 0 25px rgba(255, 0, 0, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); background: #1a1a1a; }
+            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+            50% { background: #400; }
+            100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
         }
         .alarme-ativo { animation: pulse-red 1.2s infinite; border-top-color: #f00 !important; }
+        .falha-ativa { border-top-color: #ffcc00 !important; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>CF SISTEMAS</h1>
-        <div class="sub-header">MONITORAMENTO NFS-320</div>
+        <div class="sub-header">MONITORAMENTO REAL-TIME</div>
         
         <div id="cartao" class="status-card">
-            <div id="status-texto">SINCRONIZANDO...</div>
+            <div id="status-texto">CARREGANDO...</div>
         </div>
         
         <a href="historico.html" class="nav-btn">📜 VER HISTÓRICO COMPLETO</a>
@@ -61,55 +60,62 @@
         const URL_API = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1`;
 
         function atualizar() {
-            // Fetch com timestamp para ignorar o cache do navegador
             fetch(`${URL_API}&_=${new Date().getTime()}`)
                 .then(response => response.text())
                 .then(data => {
                     
-                    // --- LIMPEZA DE DADOS (Remove V1, chaves, colchetes e aspas) ---
+                    // LIMPEZA TOTAL DE CARACTERES DO BLYNK
                     let mensagem = data
-                        .replace(/[\[\]"{}]/g, "") // Remove [ ] " { }
-                        .replace(/^V1:/, "")       // Remove V1: se aparecer no início
-                        .trim();                   // Remove espaços nas pontas
+                        .replace(/[\[\]"{}]/g, "") 
+                        .replace(/^V1:/, "")       
+                        .trim();
 
-                    if (!mensagem || mensagem === "") {
-                        mensagem = "AGUARDANDO CENTRAL...";
+                    if (!mensagem || mensagem === "" || mensagem === "null") {
+                        mensagem = "SISTEMA NORMAL";
                     }
 
                     const textoElemento = document.getElementById('status-texto');
                     const cartaoElemento = document.getElementById('cartao');
                     
-                    // Exibe a mensagem limpa (Data e Hora já inclusos da central)
+                    // MOSTRA QUALQUER MENSAGEM QUE CHEGAR DA CENTRAL
                     textoElemento.innerText = mensagem;
 
                     let msgUpper = mensagem.toUpperCase();
 
-                    // Lógica Visual de Alerta
+                    // 1. PRIORIDADE MÁXIMA: FOGO / ALARME (VERMELHO)
                     if (msgUpper.includes("FIRE") || msgUpper.includes("FOGO") || msgUpper.includes("ALARM") || msgUpper.includes("INCENDIO")) {
                         cartaoElemento.style.borderTopColor = "#ff0000";
                         textoElemento.style.color = "#ff0000";
                         cartaoElemento.classList.add("alarme-ativo");
+                        cartaoElemento.classList.remove("falha-ativa");
                     } 
-                    else if (msgUpper.includes("FAULT") || msgUpper.includes("FALHA") || msgUpper.includes("TROUBLE")) {
+                    // 2. FALHAS E ADVERTÊNCIAS (AMARELO)
+                    else if (msgUpper.includes("FAULT") || msgUpper.includes("FALHA") || msgUpper.includes("TROUBLE") || msgUpper.includes("DIRTY") || msgUpper.includes("DISABLE")) {
                         cartaoElemento.style.borderTopColor = "#ffcc00";
                         textoElemento.style.color = "#ffcc00";
+                        cartaoElemento.classList.add("falha-ativa");
                         cartaoElemento.classList.remove("alarme-ativo");
                     } 
+                    // 3. TUDO O QUE NÃO FOR FOGO OU FALHA, MAS TIVER TEXTO (AZUL OU VERDE)
+                    else if (mensagem !== "SISTEMA NORMAL") {
+                        cartaoElemento.style.borderTopColor = "#00aaff";
+                        textoElemento.style.color = "#00aaff";
+                        cartaoElemento.classList.remove("alarme-ativo", "falha-ativa");
+                    }
+                    // 4. ESTADO DE REPOUSO
                     else {
                         cartaoElemento.style.borderTopColor = "#00ff7f";
                         textoElemento.style.color = "#00ff7f";
-                        cartaoElemento.classList.remove("alarme-ativo");
+                        cartaoElemento.classList.remove("alarme-ativo", "falha-ativa");
                     }
                 })
                 .catch(err => {
-                    console.error("Erro de Conexão:", err);
-                    document.getElementById('status-texto').innerText = "ERRO DE COMUNICAÇÃO";
+                    document.getElementById('status-texto').innerText = "ERRO DE CONEXÃO";
                 });
         }
 
-        // Atualização constante (2 segundos)
         setInterval(atualizar, 2000);
-        atualizar(); // Chamada inicial imediata
+        atualizar();
     </script>
 </body>
 </html>
