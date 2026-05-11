@@ -1,40 +1,95 @@
-<script>
-    const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-    const URL_API = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1`;
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CF SISTEMAS - Monitoramento</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        
+        h1 { color: #0af; margin-bottom: 5px; }
+        .sub-header { font-size: 14px; color: #666; margin-bottom: 30px; letter-spacing: 1px; }
 
-    function atualizar() {
-        fetch(`${URL_API}&_=${new Date().getTime()}`)
-            .then(r => r.text())
-            .then(data => {
-                // Limpeza agressiva: remove aspas, colchetes, chaves e o prefixo V1
-                let msg = data.replace(/[\[\]"{}]/g, "").replace(/^V1:/, "").trim();
+        .status-card {
+            background: #1a1a1a; padding: 50px 20px; border-radius: 20px; margin: 20px auto;
+            box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
+            border-top: 8px solid #00ff7f; transition: 0.4s;
+            min-height: 120px; display: flex; align-items: center; justify-content: center;
+        }
 
-                if (!msg || msg === "null" || msg === "") return; // Ignora se vier vazio
+        #status-texto { font-size: 22px; font-weight: bold; text-transform: uppercase; line-height: 1.4; word-wrap: break-word; }
+        
+        .nav-btn { display: inline-block; padding: 18px 40px; background: #222; color: #0af; text-decoration: none; border-radius: 12px; border: 1px solid #333; font-weight: bold; margin-top: 30px; transition: 0.3s; }
+        
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+            50% { background: #400; }
+            100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+        }
+        .alarme-ativo { animation: pulse-red 1.2s infinite; border-top-color: #f00 !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CF SISTEMAS</h1>
+        <div class="sub-header">MONITORAMENTO REAL-TIME</div>
+        
+        <div id="cartao" class="status-card">
+            <div id="status-texto">CARREGANDO...</div>
+        </div>
+        
+        <a href="historico.html" class="nav-btn">📜 VER HISTÓRICO COMPLETO</a>
+    </div>
 
-                const texto = document.getElementById('status-texto');
-                const cartao = document.getElementById('cartao');
+    <script>
+        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
+        const URL_API = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1`;
 
-                texto.innerText = msg;
-                let mU = msg.toUpperCase();
+        function atualizar() {
+            fetch(`${URL_API}&_=${new Date().getTime()}`)
+                .then(r => r.text())
+                .then(data => {
+                    // Limpeza de caracteres do Blynk
+                    let msg = data.replace(/[\[\]"{}]/g, "").replace(/^V1:/, "").trim();
 
-                // RESET DE CLASSES
-                cartao.classList.remove("alarme-ativo");
-                
-                // CRITÉRIOS DE COR
-                if (mU.includes("FIRE") || mU.includes("FOGO") || mU.includes("ALARM")) {
-                    cartao.style.borderTopColor = "#f00";
-                    texto.style.color = "#f00";
-                    cartao.classList.add("alarme-ativo");
-                } 
-                else if (mU.includes("PROBL") || mU.includes("FAULT") || mU.includes("FALHA") || mU.includes("TROUBLE")) {
-                    cartao.style.borderTopColor = "#ff0"; // AMARELO
-                    texto.style.color = "#ff0";
-                } 
-                else {
-                    cartao.style.borderTopColor = "#0f7"; // VERDE (NORMAL)
-                    texto.style.color = "#0f7";
-                }
-            });
-    }
-    setInterval(atualizar, 1500); // Atualiza rápido para pegar a troca de mensagens
-</script>
+                    if (!msg || msg === "" || msg === "null") {
+                        msg = "SISTEMA NORMAL";
+                    }
+
+                    const texto = document.getElementById('status-texto');
+                    const cartao = document.getElementById('cartao');
+                    
+                    texto.innerText = msg;
+                    let mU = msg.toUpperCase();
+
+                    // Limpa animações anteriores
+                    cartao.classList.remove("alarme-ativo");
+
+                    // 1. VERMELHO (FOGO / ALARME)
+                    if (mU.includes("FIRE") || mU.includes("FOGO") || mU.includes("ALARM") || mU.includes("INCENDIO")) {
+                        cartao.style.borderTopColor = "#ff0000";
+                        texto.style.color = "#ff0000";
+                        cartao.classList.add("alarme-ativo");
+                    } 
+                    // 2. AMARELO (PROBL, FALHA, TROUBLE, DIRTY)
+                    else if (mU.includes("PROBL") || mU.includes("FAULT") || mU.includes("FALHA") || mU.includes("TROUBLE") || mU.includes("DIRTY")) {
+                        cartao.style.borderTopColor = "#ffff00";
+                        texto.style.color = "#ffff00";
+                    } 
+                    // 3. VERDE (SISTEMA NORMAL OU QUALQUER OUTRA MENSAGEM LIMPA)
+                    else {
+                        cartao.style.borderTopColor = "#00ff7f";
+                        texto.style.color = "#00ff7f";
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('status-texto').innerText = "ERRO DE CONEXÃO";
+                });
+        }
+
+        setInterval(atualizar, 2000);
+        atualizar();
+    </script>
+</body>
+</html>
