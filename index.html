@@ -3,99 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor Incêndio - Real Time</title>
+    <title>NFS-320 Monitor em Tempo Real</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: #ffffff;
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            transition: background-color 0.4s ease, color 0.4s ease;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+            min-height: 100vh;
+            background-color: #1e1e1e; /* Cor neutra inicial */
+            color: #ffffff;
         }
-        .painel {
-            text-align: center;
+
+        /* ESTADOS DINÂMICOS DE COR */
+        .status-alarme { background-color: #d32f2f !important; color: #ffffff !important; } /* Vermelho */
+        .status-falha { background-color: #fbc02d !important; color: #000000 !important; }  /* Amarelo */
+        .status-normal { background-color: #2e7d32 !important; color: #ffffff !important; }  /* Verde */
+        .status-neutro { background-color: #37474f !important; color: #ffffff !important; }  /* Azul acinzentado para outros eventos */
+
+        .card {
+            background: rgba(0, 0, 0, 0.4);
             padding: 40px;
-            border-radius: 15px;
-            width: 80%;
-            max-width: 500px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            transition: background-color 0.5s ease;
-            background-color: #222222; /* Cor inicial neutra */
+            border-radius: 20px;
+            width: 90%;
+            max-width: 650px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
         }
+
         h1 {
-            margin-bottom: 20px;
-            font-size: 24px;
-        }
-        .status-texto {
             font-size: 20px;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+            opacity: 0.8;
+        }
+
+        .display-central {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            padding: 25px;
+            font-family: 'Courier New', Courier, monospace; /* Aparência de display industrial */
+            font-size: 26px;
             font-weight: bold;
-            word-wrap: break-word;
+            min-height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid rgba(255,255,255,0.2);
+            word-break: break-word;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+        }
+
+        .rodape {
+            margin-top: 30px;
+            font-size: 12px;
+            opacity: 0.6;
         }
     </style>
 </head>
-<body>
+<body class="status-neutro">
 
-    <div class="painel" id="painel-status">
-        <h1 id="titulo-sistema">CF SISTEMAS</h1>
-        <div class="status-texto" id="texto-notifier">Carregando dados da central...</div>
+    <div class="card">
+        <h1>MONITOR CENTRAL NFS-320</h1>
+        
+        <!-- O texto exato recebido da serial aparecerá aqui dentro -->
+        <div id="evento-texto" class="display-central">CONECTANDO...</div>
+        
+        <p class="rodape">Atualização contínua via Blynk API V1</p>
     </div>
 
     <script>
-        // --- CONFIGURAÇÃO BLYNK ---
-        const BLYNK_TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa"; 
-        const PINO_STATUS = "V1"; 
+        // INSIRA O SEU AUTH TOKEN DO BLYNK ABAIXO
+        const BLYNK_AUTH_TOKEN = "SEU_AUTH_TOKEN_AQUI"; 
+        
+        // URL da API HTTP do Blynk para ler o pino V1 (Formato correto)
+        const API_URL = `blynk.cloud{BLYNK_AUTH_TOKEN}&v1`;
 
-        // Função utilitária de análise de texto idêntica à lógica do ESP32
-        function obterCorPorMensagem(mensagem) {
-            let mU = mensagem.toUpperCase();
-            
-            // 1. Prioridade Vermelha: Fogo ou Alarmes
-            if (mU.includes("FIRE") || mU.includes("ALARM") || mU.includes("FOGO") || mU.includes("INCENDIO")) {
-                return "#D32F2F"; // Vermelho escuro plano
-            }
-            // 2. Prioridade Amarela: Falhas, Avarias ou Desligamentos
-            if (mU.includes("FAULT") || mU.includes("FALHA") || mU.includes("TROUBLE") || mU.includes("AVARIA") || mU.includes("DESL")) {
-                return "#FBC02D"; // Amarelo plano escuro para contraste de texto branco
-            }
-            // 3. Prioridade Verde: Retorno ao normal ou Reset
-            if (mU.includes("NORMAL") || mU.includes("RESET") || mU.includes("RESTORE")) {
-                return "#388E3C"; // Verde plano
-            }
-            
-            return "#FBC02D"; // Padrão de atenção para dados indefinidos
+        function buscarEventoTempoReal() {
+            fetch(API_URL)
+                .then(response => {
+                    if (!response.ok) throw new Error("Erro na requisição");
+                    return response.text();
+                })
+                .then(msg => {
+                    // Limpa quebras de linha e espaços nas pontas
+                    msg = msg.trim();
+                    
+                    // Se o Blynk retornar vazio por algum motivo, não limpa a tela
+                    if (msg.length === 0) return;
+
+                    // Atualiza o display com a string exata recebida da central
+                    document.getElementById("evento-texto").innerText = msg;
+
+                    // Converte temporariamente para maiúsculo apenas para a checagem das palavras
+                    const msgFiltro = msg.toUpperCase();
+                    const corpo = document.body;
+
+                    // LÓGICA DE ALTERAÇÃO EM TEMPO REAL DA COR DE FUNDO
+                    if (msgFiltro.includes("FOGO") || msgFiltro.includes("FIRE") || msgFiltro.includes("ALARME") || msgFiltro.includes("ALARM")) {
+                        corpo.className = "status-alarme"; // Fundo Vermelho
+                    } 
+                    else if (msgFiltro.includes("FALHA") || msgFiltro.includes("TROUBLE") || msgFiltro.includes("AVISO") || msgFiltro.includes("DEFEITO")) {
+                        corpo.className = "status-falha"; // Fundo Amarelo
+                    } 
+                    else if (msgFiltro.includes("SISTEMA OK") || msgFiltro.includes("NORMAL") || msgFiltro.includes("SISTEMA NORMAL")) {
+                        corpo.className = "status-normal"; // Fundo Verde
+                    } 
+                    else {
+                        corpo.className = "status-neutro"; // Outros tipos de evento mantêm cor neutra ativa
+                    }
+                })
+                .catch(error => {
+                    console.error("Erro ao ler dados do Blynk:", error);
+                    document.getElementById("evento-texto").innerText = "ERRO DE CONEXÃO";
+                    document.body.className = "status-neutro";
+                });
         }
 
-        async function atualizarStatusTempoReal() {
-            // URL da API do Blynk IoT para obter valor de pino virtual
-            const url = `blynk.cloud{BLYNK_TOKEN}&${PINO_STATUS}`;
-            
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("Erro na requisição API Blynk");
-                
-                const textoPuroCentral = await response.text();
-                const divTexto = document.getElementById("texto-notifier");
-                const divPainel = document.getElementById("painel-status");
-
-                // Atualiza o texto na tela de forma fidedigna à central Notifier
-                divTexto.innerText = textoPuroCentral;
-
-                // Altera dinamicamente a cor de fundo do painel baseado nas palavras-chave encontradas
-                divPainel.style.backgroundColor = obterCorPorMensagem(textoPuroCentral);
-
-            } catch (error) {
-                console.error("Falha ao sincronizar com o Blynk:", error);
-                document.getElementById("texto-notifier").innerText = "ERRO DE COMUNICAÇÃO REMOTA";
-                document.getElementById("painel-status").style.backgroundColor = "#555555";
-            }
-        }
-
-        // Executa imediatamente ao abrir e agenda atualizações a cada 3 segundos
-        atualizarStatusTempoReal();
-        setInterval(atualizarStatusTempoReal, 3000);
+        // Executa imediatamente quando a página carrega
+        buscarEventoTempoReal();
+        
+        // REQUISIÇÃO CONTÍNUA: Verifica o pino V1 a cada 1000 milissegundos (1 segundo)
+        setInterval(buscarEventoTempoReal, 1000);
     </script>
 </body>
 </html>
