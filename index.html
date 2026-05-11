@@ -1,115 +1,52 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Monitoramento</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; }
-        
-        h1 { color: #0af; margin-bottom: 5px; }
-        .sub-header { font-size: 14px; color: #666; margin-bottom: 30px; letter-spacing: 1px; }
+<script>
+    const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
+    const URL_API = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1`;
 
-        .status-card {
-            background: #1a1a1a; padding: 50px 20px; border-radius: 20px; margin: 20px auto;
-            box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
-            border-top: 8px solid #00ff7f; transition: 0.4s;
-            min-height: 120px; display: flex; align-items: center; justify-content: center;
-        }
+    function atualizar() {
+        fetch(`${URL_API}&_=${new Date().getTime()}`)
+            .then(response => response.text())
+            .then(data => {
+                // --- LIMPEZA AVANÇADA ---
+                // Remove [" "], remove { }, remove o prefixo V1: e aspas
+                let mensagem = data.replace(/[\[\]"{}]/g, "") // Remove chaves, colchetes e aspas
+                                   .replace(/^V1:/, "")       // Remove o texto V1: se ele vier no início
+                                   .trim();                   // Remove espaços vazios nas pontas
 
-        #status-texto { 
-            font-size: 22px; 
-            font-weight: bold; 
-            text-transform: uppercase; 
-            line-height: 1.4; 
-            word-wrap: break-word;
-        }
-        
-        .nav-btn { 
-            display: inline-block; padding: 18px 40px; background: #222; color: #0af; 
-            text-decoration: none; border-radius: 12px; border: 1px solid #333; 
-            font-weight: bold; margin-top: 30px; transition: 0.3s;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-        .nav-btn:hover { background: #0af; color: #fff; border-color: #fff; }
+                if (!mensagem || mensagem === "") {
+                    mensagem = "AGUARDANDO CENTRAL...";
+                }
 
-        /* Animação para Alarme e Fogo */
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); background: #1a1a1a; }
-            50% { background: #300; }
-            70% { box-shadow: 0 0 0 25px rgba(255, 0, 0, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); background: #1a1a1a; }
-        }
-        .alarme-ativo { animation: pulse-red 1.2s infinite; border-top-color: #f00 !important; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>CF SISTEMAS</h1>
-        <div class="sub-header">MONITORAMENTO NFS-320</div>
-        
-        <div id="cartao" class="status-card">
-            <div id="status-texto">SINCRONIZANDO...</div>
-        </div>
-        
-        <a href="historico.html" class="nav-btn">📜 VER HISTÓRICO COMPLETO</a>
-    </div>
+                const textoElemento = document.getElementById('status-texto');
+                const cartaoElemento = document.getElementById('cartao');
+                
+                // Exibe a mensagem (Data, Hora e Evento que a central enviou)
+                textoElemento.innerText = mensagem;
 
-    <script>
-        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        const URL_API = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1`;
+                let msgUpper = mensagem.toUpperCase();
 
-        function atualizar() {
-            // Fetch com timestamp para ignorar o cache do navegador
-            fetch(`${URL_API}&_=${new Date().getTime()}`)
-                .then(response => response.text())
-                .then(data => {
-                    
-                    // --- LIMPEZA DE DADOS (Remove V1, chaves, colchetes e aspas) ---
-                    let mensagem = data
-                        .replace(/[\[\]"{}]/g, "") // Remove [ ] " { }
-                        .replace(/^V1:/, "")       // Remove V1: se aparecer no início
-                        .trim();                   // Remove espaços nas pontas
+                // Lógica de Cores e Alerta
+                if (msgUpper.includes("FIRE") || msgUpper.includes("FOGO") || msgUpper.includes("ALARM") || msgUpper.includes("INCENDIO")) {
+                    cartaoElemento.style.borderTopColor = "#ff0000";
+                    textoElemento.style.color = "#ff0000";
+                    cartaoElemento.classList.add("alarme-ativo");
+                } 
+                else if (msgUpper.includes("FAULT") || msgUpper.includes("FALHA") || msgUpper.includes("TROUBLE")) {
+                    cartaoElemento.style.borderTopColor = "#ffcc00";
+                    textoElemento.style.color = "#ffcc00";
+                    cartaoElemento.classList.remove("alarme-ativo");
+                } 
+                else {
+                    cartaoElemento.style.borderTopColor = "#00ff7f";
+                    textoElemento.style.color = "#00ff7f";
+                    cartaoElemento.classList.remove("alarme-ativo");
+                }
+            })
+            .catch(err => {
+                console.error("Erro:", err);
+                document.getElementById('status-texto').innerText = "ERRO DE CONEXÃO";
+            });
+    }
 
-                    if (!mensagem || mensagem === "") {
-                        mensagem = "AGUARDANDO CENTRAL...";
-                    }
-
-                    const textoElemento = document.getElementById('status-texto');
-                    const cartaoElemento = document.getElementById('cartao');
-                    
-                    // Exibe a mensagem limpa (Data e Hora já inclusos da central)
-                    textoElemento.innerText = mensagem;
-
-                    let msgUpper = mensagem.toUpperCase();
-
-                    // Lógica Visual de Alerta
-                    if (msgUpper.includes("FIRE") || msgUpper.includes("FOGO") || msgUpper.includes("ALARM") || msgUpper.includes("INCENDIO")) {
-                        cartaoElemento.style.borderTopColor = "#ff0000";
-                        textoElemento.style.color = "#ff0000";
-                        cartaoElemento.classList.add("alarme-ativo");
-                    } 
-                    else if (msgUpper.includes("FAULT") || msgUpper.includes("FALHA") || msgUpper.includes("TROUBLE")) {
-                        cartaoElemento.style.borderTopColor = "#ffcc00";
-                        textoElemento.style.color = "#ffcc00";
-                        cartaoElemento.classList.remove("alarme-ativo");
-                    } 
-                    else {
-                        cartaoElemento.style.borderTopColor = "#00ff7f";
-                        textoElemento.style.color = "#00ff7f";
-                        cartaoElemento.classList.remove("alarme-ativo");
-                    }
-                })
-                .catch(err => {
-                    console.error("Erro de Conexão:", err);
-                    document.getElementById('status-texto').innerText = "ERRO DE COMUNICAÇÃO";
-                });
-        }
-
-        // Atualização constante (2 segundos)
-        setInterval(atualizar, 2000);
-        atualizar(); // Chamada inicial imediata
-    </script>
-</body>
-</html>
+    setInterval(atualizar, 2000);
+    atualizar();
+</script>
