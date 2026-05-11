@@ -1,115 +1,101 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Monitoramento</title>
+    <title>Monitor Incêndio - Real Time</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; }
-        
-        h1 { color: #0af; margin-bottom: 5px; }
-        .sub-header { font-size: 14px; color: #666; margin-bottom: 30px; letter-spacing: 1px; }
-
-        .status-card {
-            background: #1a1a1a; padding: 50px 20px; border-radius: 20px; margin: 20px auto;
-            box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
-            border-top: 8px solid #00ff7f; transition: 0.4s;
-            min-height: 120px; display: flex; align-items: center; justify-content: center;
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
         }
-
-        #status-texto { 
-            font-size: 22px; 
-            font-weight: bold; 
-            text-transform: uppercase; 
-            line-height: 1.4; 
+        .painel {
+            text-align: center;
+            padding: 40px;
+            border-radius: 15px;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            transition: background-color 0.5s ease;
+            background-color: #222222; /* Cor inicial neutra */
+        }
+        h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .status-texto {
+            font-size: 20px;
+            font-weight: bold;
             word-wrap: break-word;
         }
-        
-        .nav-btn { 
-            display: inline-block; padding: 18px 40px; background: #222; color: #0af; 
-            text-decoration: none; border-radius: 12px; border: 1px solid #333; 
-            font-weight: bold; margin-top: 30px; transition: 0.3s;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-        .nav-btn:hover { background: #0af; color: #fff; border-color: #fff; }
-
-        /* Animação para Alarme e Fogo */
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); background: #1a1a1a; }
-            50% { background: #300; }
-            70% { box-shadow: 0 0 0 25px rgba(255, 0, 0, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); background: #1a1a1a; }
-        }
-        .alarme-ativo { animation: pulse-red 1.2s infinite; border-top-color: #f00 !important; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>CF SISTEMAS</h1>
-        <div class="sub-header">MONITORAMENTO NFS-320</div>
-        
-        <div id="cartao" class="status-card">
-            <div id="status-texto">SINCRONIZANDO...</div>
-        </div>
-        
-        <a href="historico.html" class="nav-btn">📜 VER HISTÓRICO COMPLETO</a>
+
+    <div class="painel" id="painel-status">
+        <h1 id="titulo-sistema">CF SISTEMAS</h1>
+        <div class="status-texto" id="texto-notifier">Carregando dados da central...</div>
     </div>
 
     <script>
-        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        const URL_API = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1`;
+        // --- CONFIGURAÇÃO BLYNK ---
+        const BLYNK_TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa"; 
+        const PINO_STATUS = "V1"; 
 
-        function atualizar() {
-            // Fetch com timestamp para ignorar o cache do navegador
-            fetch(`${URL_API}&_=${new Date().getTime()}`)
-                .then(response => response.text())
-                .then(data => {
-                    
-                    // --- LIMPEZA DE DADOS (Remove V1, chaves, colchetes e aspas) ---
-                    let mensagem = data
-                        .replace(/[\[\]"{}]/g, "") // Remove [ ] " { }
-                        .replace(/^V1:/, "")       // Remove V1: se aparecer no início
-                        .trim();                   // Remove espaços nas pontas
-
-                    if (!mensagem || mensagem === "") {
-                        mensagem = "AGUARDANDO CENTRAL...";
-                    }
-
-                    const textoElemento = document.getElementById('status-texto');
-                    const cartaoElemento = document.getElementById('cartao');
-                    
-                    // Exibe a mensagem limpa (Data e Hora já inclusos da central)
-                    textoElemento.innerText = mensagem;
-
-                    let msgUpper = mensagem.toUpperCase();
-
-                    // Lógica Visual de Alerta
-                    if (msgUpper.includes("FIRE") || msgUpper.includes("FOGO") || msgUpper.includes("ALARM") || msgUpper.includes("INCENDIO")) {
-                        cartaoElemento.style.borderTopColor = "#ff0000";
-                        textoElemento.style.color = "#ff0000";
-                        cartaoElemento.classList.add("alarme-ativo");
-                    } 
-                    else if (msgUpper.includes("FAULT") || msgUpper.includes("FALHA") || msgUpper.includes("TROUBLE")) {
-                        cartaoElemento.style.borderTopColor = "#ffcc00";
-                        textoElemento.style.color = "#ffcc00";
-                        cartaoElemento.classList.remove("alarme-ativo");
-                    } 
-                    else {
-                        cartaoElemento.style.borderTopColor = "#00ff7f";
-                        textoElemento.style.color = "#00ff7f";
-                        cartaoElemento.classList.remove("alarme-ativo");
-                    }
-                })
-                .catch(err => {
-                    console.error("Erro de Conexão:", err);
-                    document.getElementById('status-texto').innerText = "ERRO DE COMUNICAÇÃO";
-                });
+        // Função utilitária de análise de texto idêntica à lógica do ESP32
+        function obterCorPorMensagem(mensagem) {
+            let mU = mensagem.toUpperCase();
+            
+            // 1. Prioridade Vermelha: Fogo ou Alarmes
+            if (mU.includes("FIRE") || mU.includes("ALARM") || mU.includes("FOGO") || mU.includes("INCENDIO")) {
+                return "#D32F2F"; // Vermelho escuro plano
+            }
+            // 2. Prioridade Amarela: Falhas, Avarias ou Desligamentos
+            if (mU.includes("FAULT") || mU.includes("FALHA") || mU.includes("TROUBLE") || mU.includes("AVARIA") || mU.includes("DESL")) {
+                return "#FBC02D"; // Amarelo plano escuro para contraste de texto branco
+            }
+            // 3. Prioridade Verde: Retorno ao normal ou Reset
+            if (mU.includes("NORMAL") || mU.includes("RESET") || mU.includes("RESTORE")) {
+                return "#388E3C"; // Verde plano
+            }
+            
+            return "#FBC02D"; // Padrão de atenção para dados indefinidos
         }
 
-        // Atualização constante (2 segundos)
-        setInterval(atualizar, 2000);
-        atualizar(); // Chamada inicial imediata
+        async function atualizarStatusTempoReal() {
+            // URL da API do Blynk IoT para obter valor de pino virtual
+            const url = `blynk.cloud{BLYNK_TOKEN}&${PINO_STATUS}`;
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Erro na requisição API Blynk");
+                
+                const textoPuroCentral = await response.text();
+                const divTexto = document.getElementById("texto-notifier");
+                const divPainel = document.getElementById("painel-status");
+
+                // Atualiza o texto na tela de forma fidedigna à central Notifier
+                divTexto.innerText = textoPuroCentral;
+
+                // Altera dinamicamente a cor de fundo do painel baseado nas palavras-chave encontradas
+                divPainel.style.backgroundColor = obterCorPorMensagem(textoPuroCentral);
+
+            } catch (error) {
+                console.error("Falha ao sincronizar com o Blynk:", error);
+                document.getElementById("texto-notifier").innerText = "ERRO DE COMUNICAÇÃO REMOTA";
+                document.getElementById("painel-status").style.backgroundColor = "#555555";
+            }
+        }
+
+        // Executa imediatamente ao abrir e agenda atualizações a cada 3 segundos
+        atualizarStatusTempoReal();
+        setInterval(atualizarStatusTempoReal, 3000);
     </script>
 </body>
 </html>
