@@ -3,43 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Real Time</title>
+    <title>CF SISTEMAS - Monitoramento</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
         
+        h1 { color: #0af; margin-bottom: 5px; }
+        .sub-header { font-size: 14px; color: #666; margin-bottom: 30px; letter-spacing: 1px; }
+
         .status-card {
-            background: #1a1a1a; padding: 60px 20px; border-radius: 20px; margin: 50px auto;
+            background: #1a1a1a; padding: 50px 20px; border-radius: 20px; margin: 20px auto;
             box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
             border-top: 8px solid #00ff7f; transition: 0.4s;
-            min-height: 100px; display: flex; align-items: center; justify-content: center;
+            min-height: 120px; display: flex; align-items: center; justify-content: center;
         }
 
-        #status-texto { font-size: 24px; font-weight: bold; text-transform: uppercase; line-height: 1.4; }
+        #status-texto { 
+            font-size: 22px; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            line-height: 1.4; 
+            word-wrap: break-word;
+        }
         
         .nav-btn { 
-            display: inline-block; padding: 15px 40px; background: #222; color: #0af; 
-            text-decoration: none; border-radius: 10px; border: 1px solid #333; 
-            font-weight: bold; margin-top: 20px; transition: 0.3s;
+            display: inline-block; padding: 18px 40px; background: #222; color: #0af; 
+            text-decoration: none; border-radius: 12px; border: 1px solid #333; 
+            font-weight: bold; margin-top: 30px; transition: 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
-        .nav-btn:hover { background: #333; border-color: #0af; }
+        .nav-btn:hover { background: #0af; color: #fff; border-color: #fff; }
 
-        /* Animação para Alarme/Fogo */
+        /* Animação para Alarme e Fogo */
         @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
-            70% { box-shadow: 0 0 0 20px rgba(255, 0, 0, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); background: #1a1a1a; }
+            50% { background: #300; }
+            70% { box-shadow: 0 0 0 25px rgba(255, 0, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); background: #1a1a1a; }
         }
-        .alarme-ativo { animation: pulse-red 1.5s infinite; border-top-color: #f00 !important; }
+        .alarme-ativo { animation: pulse-red 1.2s infinite; border-top-color: #f00 !important; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 style="color: #0af;">CF SISTEMAS</h1>
-        <p style="font-size: 12px; color: #666;">Monitoramento NFS-320</p>
+        <h1>CF SISTEMAS</h1>
+        <div class="sub-header">MONITORAMENTO NFS-320</div>
         
         <div id="cartao" class="status-card">
-            <div id="status-texto">CONECTANDO À CENTRAL...</div>
+            <div id="status-texto">SINCRONIZANDO...</div>
         </div>
         
         <a href="historico.html" class="nav-btn">📜 VER HISTÓRICO COMPLETO</a>
@@ -47,27 +58,33 @@
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        // URL da API do Blynk para o Pino V1 (Status)
         const URL_API = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1`;
 
         function atualizar() {
-            // Adicionamos um timestamp para evitar que o navegador use o cache
+            // Fetch com timestamp para ignorar o cache do navegador
             fetch(`${URL_API}&_=${new Date().getTime()}`)
                 .then(response => response.text())
                 .then(data => {
-                    // Limpeza: Remove aspas extras que o Blynk às vezes envia, mas MANTÉM espaços
-                    let mensagem = data.replace(/["\[\]]/g, "").trim();
                     
-                    if (!mensagem || mensagem === "") mensagem = "AGUARDANDO DADOS...";
+                    // --- LIMPEZA DE DADOS (Remove V1, chaves, colchetes e aspas) ---
+                    let mensagem = data
+                        .replace(/[\[\]"{}]/g, "") // Remove [ ] " { }
+                        .replace(/^V1:/, "")       // Remove V1: se aparecer no início
+                        .trim();                   // Remove espaços nas pontas
+
+                    if (!mensagem || mensagem === "") {
+                        mensagem = "AGUARDANDO CENTRAL...";
+                    }
 
                     const textoElemento = document.getElementById('status-texto');
                     const cartaoElemento = document.getElementById('cartao');
                     
+                    // Exibe a mensagem limpa (Data e Hora já inclusos da central)
                     textoElemento.innerText = mensagem;
 
                     let msgUpper = mensagem.toUpperCase();
 
-                    // Lógica de Cores baseada na mensagem real da NFS-320
+                    // Lógica Visual de Alerta
                     if (msgUpper.includes("FIRE") || msgUpper.includes("FOGO") || msgUpper.includes("ALARM") || msgUpper.includes("INCENDIO")) {
                         cartaoElemento.style.borderTopColor = "#ff0000";
                         textoElemento.style.color = "#ff0000";
@@ -85,14 +102,14 @@
                     }
                 })
                 .catch(err => {
-                    console.error("Erro ao buscar dados:", err);
-                    document.getElementById('status-texto').innerText = "ERRO DE CONEXÃO";
+                    console.error("Erro de Conexão:", err);
+                    document.getElementById('status-texto').innerText = "ERRO DE COMUNICAÇÃO";
                 });
         }
 
-        // Atualiza a cada 2 segundos para não sobrecarregar a API Free do Blynk
+        // Atualização constante (2 segundos)
         setInterval(atualizar, 2000);
-        atualizar();
+        atualizar(); // Chamada inicial imediata
     </script>
 </body>
 </html>
