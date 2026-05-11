@@ -33,7 +33,7 @@
         }
         .nav-btn:hover { background: #0af; color: #fff; border-color: #fff; }
 
-        /* Animação para Alarme e Fogo */
+        /* Animações */
         @keyframes pulse-red {
             0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
             50% { background: #400; }
@@ -64,7 +64,6 @@
                 .then(response => response.text())
                 .then(data => {
                     
-                    // LIMPEZA TOTAL DE CARACTERES DO BLYNK
                     let mensagem = data
                         .replace(/[\[\]"{}]/g, "") 
                         .replace(/^V1:/, "")       
@@ -77,32 +76,32 @@
                     const textoElemento = document.getElementById('status-texto');
                     const cartaoElemento = document.getElementById('cartao');
                     
-                    // MOSTRA QUALQUER MENSAGEM QUE CHEGAR DA CENTRAL
                     textoElemento.innerText = mensagem;
-
                     let msgUpper = mensagem.toUpperCase();
 
-                    // 1. PRIORIDADE MÁXIMA: FOGO / ALARME (VERMELHO)
+                    // --- LÓGICA DE CORES ATUALIZADA PARA NOTIFIER ---
+
+                    // 1. VERMELHO: FOGO / ALARME
                     if (msgUpper.includes("FIRE") || msgUpper.includes("FOGO") || msgUpper.includes("ALARM") || msgUpper.includes("INCENDIO")) {
                         cartaoElemento.style.borderTopColor = "#ff0000";
                         textoElemento.style.color = "#ff0000";
                         cartaoElemento.classList.add("alarme-ativo");
                         cartaoElemento.classList.remove("falha-ativa");
                     } 
-                    // 2. FALHAS E ADVERTÊNCIAS (AMARELO)
-                    else if (msgUpper.includes("FAULT") || msgUpper.includes("FALHA") || msgUpper.includes("TROUBLE") || msgUpper.includes("DIRTY") || msgUpper.includes("DISABLE")) {
+                    // 2. AMARELO: PROBL (FALHA), TROUBLE, DIRTY, DISABLE
+                    else if (msgUpper.includes("PROBL") || msgUpper.includes("FAULT") || msgUpper.includes("FALHA") || msgUpper.includes("TROUBLE") || msgUpper.includes("DIRTY")) {
                         cartaoElemento.style.borderTopColor = "#ffcc00";
                         textoElemento.style.color = "#ffcc00";
                         cartaoElemento.classList.add("falha-ativa");
                         cartaoElemento.classList.remove("alarme-ativo");
                     } 
-                    // 3. TUDO O QUE NÃO FOR FOGO OU FALHA, MAS TIVER TEXTO (AZUL OU VERDE)
+                    // 3. AZUL: OUTROS EVENTOS (MANUTENÇÃO, TESTE)
                     else if (mensagem !== "SISTEMA NORMAL") {
                         cartaoElemento.style.borderTopColor = "#00aaff";
                         textoElemento.style.color = "#00aaff";
                         cartaoElemento.classList.remove("alarme-ativo", "falha-ativa");
                     }
-                    // 4. ESTADO DE REPOUSO
+                    // 4. VERDE: REPOUSO
                     else {
                         cartaoElemento.style.borderTopColor = "#00ff7f";
                         textoElemento.style.color = "#00ff7f";
