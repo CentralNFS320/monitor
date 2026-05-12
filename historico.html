@@ -2,62 +2,44 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Histórico CF SISTEMAS</title>
+    <title>Histórico - CF SISTEMAS</title>
     <style>
-        body { background: #0a0a0a; color: #fff; font-family: 'Courier New', monospace; text-align: center; padding: 20px; }
-        .log-container { 
-            background: #111; border: 2px solid #333; max-width: 800px; margin: 20px auto; 
-            height: 500px; overflow-y: auto; border-radius: 10px; text-align: left; padding: 15px;
-        }
-        .evento { border-bottom: 1px solid #222; padding: 8px 0; font-size: 14px; }
-        .data { color: #0af; font-weight: bold; margin-right: 10px; }
-        .msg { color: #eee; }
-        .btn { padding: 12px 25px; background: #0af; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .falha { color: #ff0; }
-        .alarme { color: #f00; font-weight: bold; }
+        body { background: #000; color: #fff; font-family: monospace; padding: 20px; text-align: center; }
+        #log { background: #0a0a0a; border: 1px solid #333; height: 500px; overflow-y: auto; text-align: left; padding: 15px; margin: 20px auto; max-width: 800px; border-radius: 10px; color: #0f7; }
+        .btn { padding: 12px 25px; background: #222; color: #0af; border: 1px solid #0af; cursor: pointer; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        .evento { border-bottom: 1px solid #222; padding: 5px 0; }
     </style>
 </head>
 <body>
-    <h1>HISTÓRICO DE EVENTOS (MÁX 800)</h1>
-    
-    <button class="btn" onclick="carregarMemoria()">CARREGAR MEMÓRIA DO ESP32</button>
-    <a href="index.html" style="text-decoration:none; color:#666; margin-left:20px;">Voltar</a>
-
-    <div class="log-container" id="listaEventos">
-        </div>
+    <h2 style="color:#0af">REGISTRO DE EVENTOS (800)</h2>
+    <div id="log">Aguardando novos eventos...</div>
+    <br>
+    <button class="btn" onclick="carregar()">CARREGAR MEMÓRIA DO DISPOSITIVO</button>
+    <a href="index.html" class="btn" style="background:#444; color:#fff; border:none;">VOLTAR</a>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        let ultimoEvento = "";
+        let ultimo = "";
 
-        function carregarMemoria() {
-            document.getElementById('listaEventos').innerHTML = "<div>Lendo memória interna...</div>";
+        function carregar() {
+            document.getElementById('log').innerHTML = "<div>Solicitando dados...</div>";
             fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`);
         }
 
-        function adicionarNaTela(msg) {
-            if (!msg || msg === "null" || msg === ultimoEvento) return;
-            ultimoEvento = msg;
-
-            const lista = document.getElementById('listaEventos');
-            const data = new Date().toLocaleString();
-            
-            let classe = "msg";
-            if(msg.includes("FIRE") || msg.includes("ALARM")) classe = "alarme";
-            if(msg.includes("PROBL") || msg.includes("ABERTO")) classe = "falha";
-
-            const item = `<div class="evento"><span class="data">[${data}]</span><span class="${classe}">${msg}</span></div>`;
-            
-            // Adiciona no topo
-            lista.innerHTML = item + lista.innerHTML;
-        }
-
-        // Monitora o pino V2 continuamente
         setInterval(() => {
             fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2&_=${Date.now()}`)
-                .then(r => r.text())
-                .then(adicionarNaTela);
-        }, 2000);
+            .then(r => r.text())
+            .then(data => {
+                let msg = data.replace(/[\[\]"{}]/g, "").replace("V2:", "").trim();
+                if (msg && msg !== "null" && msg !== ultimo) {
+                    const log = document.getElementById('log');
+                    const d = new Date().toLocaleTimeString();
+                    const item = `<div class="evento"><span style="color:#666">[${d}]</span> ${msg}</div>`;
+                    log.innerHTML = item + log.innerHTML;
+                    ultimo = msg;
+                }
+            });
+        }, 1500);
     </script>
 </body>
 </html>
