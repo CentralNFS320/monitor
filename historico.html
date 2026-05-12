@@ -2,44 +2,48 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Histórico - CF SISTEMAS</title>
+    <title>Histórico CF SISTEMAS</title>
     <style>
-        body { background: #000; color: #fff; font-family: monospace; padding: 20px; text-align: center; }
-        #log { background: #0a0a0a; border: 1px solid #333; height: 500px; overflow-y: auto; text-align: left; padding: 15px; margin: 20px auto; max-width: 800px; border-radius: 10px; color: #0f7; }
-        .btn { padding: 12px 25px; background: #222; color: #0af; border: 1px solid #0af; cursor: pointer; text-decoration: none; border-radius: 5px; font-weight: bold; }
-        .evento { border-bottom: 1px solid #222; padding: 5px 0; }
+        body { background: #000; color: #0f7; font-family: monospace; padding: 20px; }
+        #log { border: 1px solid #333; height: 500px; overflow-y: auto; padding: 10px; background: #050505; margin-bottom: 20px; }
+        .btn { padding: 10px 20px; background: #222; color: #0af; border: 1px solid #0af; cursor: pointer; text-decoration: none; }
     </style>
 </head>
 <body>
-    <h2 style="color:#0af">REGISTRO DE EVENTOS (800)</h2>
-    <div id="log">Aguardando novos eventos...</div>
-    <br>
-    <button class="btn" onclick="carregar()">CARREGAR MEMÓRIA DO DISPOSITIVO</button>
-    <a href="index.html" class="btn" style="background:#444; color:#fff; border:none;">VOLTAR</a>
+    <h2>📜 HISTÓRICO DA MEMÓRIA ESP32</h2>
+    <div id="log">Aguardando dados...</div>
+    
+    <button class="btn" onclick="solicitarCarga()">CARREGAR MEMÓRIA COMPLETA</button>
+    <a href="index.html" class="btn">VOLTAR</a>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        let ultimo = "";
+        let ultimaMensagem = "";
 
-        function carregar() {
-            document.getElementById('log').innerHTML = "<div>Solicitando dados...</div>";
+        function solicitarCarga() {
+            document.getElementById('log').innerHTML = "Lendo memória do ESP32...";
+            // Aciona o V3 no ESP32 para ele começar a despejar o arquivo no V2
             fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`);
         }
 
-        setInterval(() => {
+        function monitorarV2() {
             fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2&_=${Date.now()}`)
-            .then(r => r.text())
-            .then(data => {
-                let msg = data.replace(/[\[\]"{}]/g, "").replace("V2:", "").trim();
-                if (msg && msg !== "null" && msg !== ultimo) {
-                    const log = document.getElementById('log');
-                    const d = new Date().toLocaleTimeString();
-                    const item = `<div class="evento"><span style="color:#666">[${d}]</span> ${msg}</div>`;
-                    log.innerHTML = item + log.innerHTML;
-                    ultimo = msg;
-                }
-            });
-        }, 1500);
+                .then(r => r.text())
+                .then(data => {
+                    let msg = data.replace(/[\[\]"{}]/g, "").replace("V2:", "").trim();
+                    
+                    // Se a mensagem for nova, adiciona na lista (sem apagar as anteriores)
+                    if (msg !== "" && msg !== "null" && msg !== ultimaMensagem) {
+                        const logDiv = document.getElementById('log');
+                        if(logDiv.innerText.includes("Aguardando") || logDiv.innerText.includes("Lendo")) logDiv.innerHTML = "";
+                        
+                        logDiv.innerHTML = `<div>> ${msg}</div>` + logDiv.innerHTML;
+                        ultimaMensagem = msg;
+                    }
+                });
+        }
+
+        setInterval(monitorarV2, 1500);
     </script>
 </body>
 </html>
