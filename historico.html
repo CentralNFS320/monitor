@@ -2,59 +2,59 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Busca de Histórico - CF SISTEMAS</title>
+    <title>Histórico - CF SISTEMAS</title>
     <style>
-        body { background: #0a0a0a; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; }
-        .busca-box { background: #1a1a1a; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #333; }
-        input { padding: 10px; border-radius: 5px; border: none; width: 150px; }
-        .btn { padding: 10px 20px; background: #0af; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        #resultado { background: #000; border: 1px solid #0f7; height: 500px; overflow-y: auto; text-align: left; padding: 15px; color: #0f7; font-family: monospace; }
-        .evento { border-bottom: 1px solid #222; padding: 5px 0; }
+        body { font-family: 'Segoe UI', sans-serif; background: #000; color: #fff; text-align: center; padding: 20px; }
+        .header-busca { background: #111; padding: 20px; border-radius: 10px; border-bottom: 3px solid #0af; margin-bottom: 20px; }
+        input[type="date"] { padding: 10px; border-radius: 5px; font-size: 16px; margin: 10px; }
+        .btn { padding: 10px 20px; background: #0af; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; }
+        #log { background: #050505; border: 1px solid #333; height: 600px; overflow-y: auto; text-align: left; padding: 20px; font-family: monospace; }
+        .alarme-msg { color: #f00; font-weight: bold; background: rgba(255,0,0,0.1); border-left: 5px solid #f00; padding: 10px; margin: 5px 0; }
+        .normal-msg { border-bottom: 1px solid #222; padding: 5px 0; color: #0f7; }
     </style>
 </head>
 <body>
-    <h1>🔎 RASTREADOR DE EVENTOS</h1>
-    
-    <div class="busca-box">
-        <input type="text" id="dataBusca" placeholder="dd/mm/aaaa">
-        <button class="btn" onclick="buscar()">BUSCAR HISTÓRICO</button>
-        <button class="btn" style="background:#444" onclick="document.getElementById('resultado').innerHTML=''">LIMPAR TELA</button>
-        <a href="index.html" style="color:#666; margin-left:15px; text-decoration:none;">Voltar</a>
+    <div class="header-busca">
+        <h2 style="color:#0af">🔎 RASTREADOR DE EVENTOS</h2>
+        <input type="date" id="calendario">
+        <button class="btn" onclick="buscar()">BUSCAR DATA</button>
+        <button class="btn" style="background:#444" onclick="document.getElementById('log').innerHTML=''">LIMPAR</button>
+        <a href="index.html" style="color:#666; margin-left:15px; text-decoration:none;">Painel Home</a>
     </div>
 
-    <div id="resultado">Digite uma data e clique em buscar...</div>
+    <div id="log">Selecione uma data no calendário para buscar...</div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
+        let ultimo = "";
 
         function buscar() {
-            const data = document.getElementById('dataBusca').value;
-            if(!data) return alert("Digite a data!");
-            
-            document.getElementById('resultado').innerHTML = "Buscando na memória do ESP32...";
-            
-            // Envia a data de busca para o pino V3 do ESP32
+            const data = document.getElementById('calendario').value;
+            if(!data) return alert("Escolha uma data!");
+            document.getElementById('log').innerHTML = "Buscando memória...";
             fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=${data}`);
-            
-            // Começa a monitorar o V2 para receber os resultados
-            setInterval(escutarResultados, 2000);
         }
 
-        let ultimoMsg = "";
-        function escutarResultados() {
+        setInterval(() => {
             fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2&_=${Date.now()}`)
                 .then(r => r.text())
                 .then(data => {
                     let msg = data.replace(/[\[\]"{}]/g, "").replace("V2:", "").trim();
-                    if(msg && msg !== "null" && msg !== ultimoMsg) {
-                        const res = document.getElementById('resultado');
-                        if(res.innerText.includes("Buscando") || res.innerText.includes("Digite")) res.innerHTML = "";
+                    if (msg && msg !== "null" && msg !== ultimo) {
+                        const log = document.getElementById('log');
+                        if(log.innerText.includes("Selecione") || log.innerText.includes("Buscando")) log.innerHTML = "";
                         
-                        res.innerHTML = `<div class="evento">${msg}</div>` + res.innerHTML;
-                        ultimoMsg = msg;
+                        const div = document.createElement('div');
+                        // Se a mensagem bruta da central tiver indicativo de alarme
+                        let isAlarme = msg.includes("FIRE") || msg.includes("ALARM") || msg.includes("FOGO");
+                        div.className = isAlarme ? "alarme-msg" : "normal-msg";
+                        div.innerText = msg;
+                        
+                        log.insertBefore(div, log.firstChild);
+                        ultimo = msg;
                     }
                 });
-        }
+        }, 1500);
     </script>
 </body>
 </html>
