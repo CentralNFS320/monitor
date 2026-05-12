@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>CF SISTEMAS - MONITOR</title>
+    <title>CFSISTEMAS - MONITOR</title>
     <style>
         body {
             background-color: #000;
@@ -17,7 +17,7 @@
 
         .container { text-align: center; width: 95%; max-width: 800px; }
 
-        /* IDENTIFICAÇÃO BRANCA NO TOPO */
+        /* NOME CFSISTEMAS EM BRANCO NO TOPO */
         .identificacao {
             color: #ffffff;
             font-size: 28px;
@@ -30,8 +30,8 @@
         .painel {
             padding: 40px 20px;
             border-radius: 10px;
-            background-color: #1a1a1a;
-            border: 1px solid #333;
+            background-color: #000; /* FUNDO PRETO PADRÃO */
+            border: 1px solid #222; /* Borda bem discreta */
             min-height: 200px;
             display: flex;
             align-items: center;
@@ -47,36 +47,36 @@
             padding: 0 20px;
         }
 
-        /* --- CORES COM EFEITO DE REFLEXO LUMINOSO (GLOW) --- */
+        /* --- ESTADOS LUMINOSOS (APENAS ALARME E FALHA) --- */
 
-        /* MODO ALARME: Fundo Vinho / Letra Vermelha / Reflexo Vermelho */
+        /* ALARME (VERMELHO COM REFLEXO) */
         .alarme-on { 
             background-color: #3d0000 !important;
             border: 1px solid #ff3333 !important;
-            box-shadow: 0 0 30px #ff3333; /* O REFLEXO LUMINOSO */
+            box-shadow: 0 0 35px #ff3333; 
         }
         .alarme-on .status-texto { color: #ff3333 !important; }
 
-        /* MODO FALHA: Fundo Marrom / Letra Amarela / Reflexo Amarelo */
+        /* FALHA / PROBL / LPR (AMARELO COM REFLEXO) */
         .falha-on { 
             background-color: #332b00 !important;
             border: 1px solid #ffcc00 !important;
-            box-shadow: 0 0 30px #ffcc00;
+            box-shadow: 0 0 35px #ffcc00;
         }
         .falha-on .status-texto { color: #ffcc00 !important; }
 
-        /* MODO NORMAL: Fundo Verde Escuro / Letra Verde / Reflexo Verde */
+        /* MODO NORMAL (FUNDO PRETO, ESCRITA VERDE, SEM REFLEXO) */
         .normal-on { 
-            background-color: #002200 !important; 
-            border: 1px solid #00ff00 !important;
-            box-shadow: 0 0 20px #00ff00;
+            background-color: #000 !important; 
+            border: 1px solid #111 !important;
+            box-shadow: none !important; /* REMOVE O EFEITO LUMINOSO */
         }
         .normal-on .status-texto { color: #00ff00 !important; }
 
         .btn-link {
             display: inline-block;
             margin-top: 40px;
-            color: #444;
+            color: #333;
             text-decoration: none;
             font-size: 13px;
         }
@@ -85,7 +85,7 @@
 <body>
 
     <div class="container">
-        <div class="identificacao">CF SISTEMAS</div>
+        <div class="identificacao">CFSISTEMAS</div>
         
         <div class="painel" id="quadro">
             <div class="status-texto" id="texto">AGUARDANDO CENTRAL...</div>
@@ -98,7 +98,6 @@
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
         async function atualizar() {
-            // Atualiza a cada 3 segundos exatos
             const url = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${Date.now()}`;
             
             try {
@@ -119,7 +118,7 @@
                 if (m.includes("FIRE") || m.includes("ALARM") || m.includes("FOGO") || m.includes("INCENDIO")) {
                     quadro.classList.add("alarme-on");
                 } 
-                else if (m.includes("FAULT") || m.includes("FALHA") || m.includes("TROUBLE") || m.includes("AVARIA") || m.includes("DESL")) {
+                else if (m.includes("FAULT") || m.includes("FALHA") || m.includes("TROUBLE") || m.includes("AVARIA") || m.includes("DESL") || m.includes("PROBL") || m.includes("LPR")) {
                     quadro.classList.add("falha-on");
                 }
                 else {
