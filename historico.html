@@ -2,57 +2,74 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>CF SISTEMAS - Histórico</title>
+    <title>CFSISTEMAS - Histórico</title>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; text-align: center; padding: 15px; }
-        .topo { background: #111; padding: 20px; border-bottom: 3px solid #0af; margin-bottom: 20px; border-radius: 10px; }
-        input[type="date"] { padding: 10px; border-radius: 5px; font-size: 16px; margin: 10px; border: none; }
-        .btn { padding: 12px 20px; background: #0af; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        #log { background: #050505; border: 1px solid #333; height: 550px; overflow-y: auto; text-align: left; padding: 20px; font-family: monospace; font-size: 13px; }
-        .alarme { color: #f44; font-weight: bold; border-left: 4px solid #f44; padding-left: 10px; background: rgba(255,0,0,0.1); margin-bottom: 5px; }
-        .normal { border-bottom: 1px solid #222; padding: 5px 0; color: #0f7; }
+        .topo { background: #0a0a0a; padding: 20px; border: 2px solid #222; border-radius: 12px; margin-bottom: 20px; }
+        input[type="date"] { padding: 10px; border-radius: 5px; background: #222; color: #fff; border: 1px solid #444; margin-bottom: 10px; }
+        .btn { padding: 12px 20px; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 5px; }
+        .btn-data { background: #0af; }
+        .btn-tudo { background: #388E3C; }
+        .btn-limpar { background: #444; }
+        #log { background: #050505; border: 1px solid #222; height: 500px; overflow-y: auto; text-align: left; padding: 20px; font-family: monospace; font-size: 14px; }
+        .linha { border-bottom: 1px solid #111; padding: 5px 0; color: #0f7; }
+        .linha-fogo { color: #f44; font-weight: bold; background: rgba(255,0,0,0.1); padding: 5px; border-left: 4px solid #f44; }
     </style>
 </head>
 <body>
     <div class="topo">
-        <h2 style="color:#0af; margin:0;">🔎 BUSCA NA MEMÓRIA (V3/V4)</h2>
-        <input type="date" id="cal">
-        <button class="btn" onclick="buscar()">BUSCAR</button>
-        <a href="index.html" style="color:#666; text-decoration:none; margin-left:15px;">Painel Home</a>
+        <h2 style="color:#0af; margin-top:0;">RASTREADOR CFSISTEMAS</h2>
+        <input type="date" id="data-input"><br>
+        <button class="btn btn-data" onclick="buscarData()">CARREGAR DATA</button>
+        <button class="btn btn-tudo" onclick="buscarTudo()">CARREGAR TUDO</button>
+        <button class="btn btn-limpar" onclick="limpar()">LIMPAR TELA</button>
+        <br><a href="index.html" style="color:#666; text-decoration:none; font-size:12px;">Voltar ao Início</a>
     </div>
 
-    <div id="log">Selecione uma data para extrair o log do ESP32...</div>
+    <div id="log">Aguardando comando...</div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
         let ultimo = "";
+        let rodando = false;
 
-        function buscar() {
-            const data = document.getElementById('cal').value;
-            if(!data) return alert("Escolha uma data!");
-            document.getElementById('log').innerHTML = "🛰️ Buscando dados no chip... aguarde...";
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=${data}`);
+        function buscarData() {
+            const d = document.getElementById('data-input').value;
+            if(!d) return alert("Escolha a data!");
+            limpar();
+            document.getElementById('log').innerText = "🔍 Buscando data: " + d;
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=${d}`);
+            iniciar();
         }
 
-        setInterval(() => {
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V4&_=${Date.now()}`)
+        function buscarTudo() {
+            limpar();
+            document.getElementById('log').innerText = "🛰️ Solicitando memória completa...";
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=1`);
+            iniciar();
+        }
+
+        function limpar() { document.getElementById('log').innerHTML = ""; ultimo = ""; }
+
+        function iniciar() {
+            if (rodando) return; rodando = true;
+            setInterval(() => {
+                fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2&_=${Date.now()}`)
                 .then(r => r.text())
                 .then(data => {
-                    let msg = data.replace(/[\[\]"{}]/g, "").replace("V4:", "").trim();
+                    let msg = data.replace(/[\[\]"{}]/g, "").replace("V2:", "").trim();
                     if (msg && msg !== "null" && msg !== ultimo) {
                         const log = document.getElementById('log');
-                        if(log.innerText.includes("Buscando") || log.innerText.includes("Selecione")) log.innerHTML = "";
-                        
+                        if(log.innerText.includes("Solicitando") || log.innerText.includes("Aguardando") || log.innerText.includes("Buscando")) log.innerHTML = "";
                         const div = document.createElement('div');
-                        let isAlarme = msg.includes("FIRE") || msg.includes("ALARM") || msg.includes("FOGO") || msg.includes("INCENDIO");
-                        div.className = isAlarme ? "alarme" : "normal";
+                        div.className = (msg.includes("FIRE") || msg.includes("ALARM") || msg.includes("FOGO")) ? "linha-fogo" : "linha";
                         div.innerText = msg;
-                        
                         log.insertBefore(div, log.firstChild);
                         ultimo = msg;
                     }
                 });
-        }, 1500);
+            }, 1200);
+        }
     </script>
 </body>
 </html>
