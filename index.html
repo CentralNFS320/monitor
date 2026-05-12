@@ -17,7 +17,6 @@
 
         .container { text-align: center; width: 95%; max-width: 800px; }
 
-        /* NOME CFSISTEMAS EM BRANCO NO TOPO */
         .identificacao {
             color: #ffffff;
             font-size: 28px;
@@ -29,14 +28,13 @@
         /* O QUADRO (CARD) */
         .painel {
             padding: 40px 20px;
-            border-radius: 10px;
-            background-color: #000; /* FUNDO PRETO PADRÃO */
-            border: 1px solid #222; /* Borda bem discreta */
+            border-radius: 12px;
             min-height: 200px;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: 0.5s;
+            background-color: #000;
         }
 
         .status-texto {
@@ -47,36 +45,37 @@
             padding: 0 20px;
         }
 
-        /* --- ESTADOS LUMINOSOS (APENAS ALARME E FALHA) --- */
+        /* --- ESTADO NORMAL COM ALTO RELEVO --- */
+        .normal-on { 
+            background-color: #0a0a0a !important; 
+            /* Efeito de Alto Relevo: borda clara em cima/esquerda e escura embaixo/direita */
+            border-top: 2px solid #333 !important;
+            border-left: 2px solid #333 !important;
+            border-bottom: 2px solid #111 !important;
+            border-right: 2px solid #111 !important;
+            box-shadow: 6px 6px 15px rgba(0,0,0,0.8), -2px -2px 10px rgba(255,255,255,0.05) !important;
+        }
+        .normal-on .status-texto { color: #00ff00 !important; }
 
-        /* ALARME (VERMELHO COM REFLEXO) */
+        /* --- ESTADOS LUMINOSOS (ALARME E FALHA) --- */
         .alarme-on { 
             background-color: #3d0000 !important;
             border: 1px solid #ff3333 !important;
-            box-shadow: 0 0 35px #ff3333; 
+            box-shadow: 0 0 35px #ff3333 !important; 
         }
         .alarme-on .status-texto { color: #ff3333 !important; }
 
-        /* FALHA / PROBL / LPR (AMARELO COM REFLEXO) */
         .falha-on { 
             background-color: #332b00 !important;
             border: 1px solid #ffcc00 !important;
-            box-shadow: 0 0 35px #ffcc00;
+            box-shadow: 0 0 35px #ffcc00 !important;
         }
         .falha-on .status-texto { color: #ffcc00 !important; }
-
-        /* MODO NORMAL (FUNDO PRETO, ESCRITA VERDE, SEM REFLEXO) */
-        .normal-on { 
-            background-color: #000 !important; 
-            border: 1px solid #111 !important;
-            box-shadow: none !important; /* REMOVE O EFEITO LUMINOSO */
-        }
-        .normal-on .status-texto { color: #00ff00 !important; }
 
         .btn-link {
             display: inline-block;
             margin-top: 40px;
-            color: #333;
+            color: #222;
             text-decoration: none;
             font-size: 13px;
         }
