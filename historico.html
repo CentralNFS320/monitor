@@ -2,73 +2,80 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>CFSISTEMAS - Histórico</title>
+    <title>Relatório CFSISTEMAS</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; padding: 15px; }
-        .topo { background: #0a0a0a; padding: 20px; border: 2px solid #222; border-radius: 12px; margin-bottom: 20px; }
-        input[type="date"] { padding: 10px; border-radius: 5px; background: #222; color: #fff; border: 1px solid #444; margin-bottom: 10px; }
-        .btn { padding: 12px 20px; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 5px; }
-        .btn-data { background: #0af; }
-        .btn-tudo { background: #388E3C; }
-        .btn-limpar { background: #444; }
-        #log { background: #050505; border: 1px solid #222; height: 500px; overflow-y: auto; text-align: left; padding: 20px; font-family: monospace; font-size: 14px; }
-        .linha { border-bottom: 1px solid #111; padding: 5px 0; color: #0f7; }
-        .linha-fogo { color: #f44; font-weight: bold; background: rgba(255,0,0,0.1); padding: 5px; border-left: 4px solid #f44; }
+        body { background: #121212; color: white; font-family: Arial; text-align: center; padding: 20px; }
+        .box { background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; }
+        #monitor-log { background: white; color: black; text-align: left; padding: 40px; min-height: 400px; margin-top: 20px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; }
+        .btn { padding: 15px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 5px; }
+        .btn-sync { background: #0af; color: white; }
+        .btn-word { background: #2b5797; color: white; }
+        .btn-clear { background: #d32f2f; color: white; }
     </style>
 </head>
 <body>
-    <div class="topo">
-        <h2 style="color:#0af; margin-top:0;">RASTREADOR CFSISTEMAS</h2>
-        <input type="date" id="data-input"><br>
-        <button class="btn btn-data" onclick="buscarData()">CARREGAR DATA</button>
-        <button class="btn btn-tudo" onclick="buscarTudo()">CARREGAR TUDO</button>
-        <button class="btn btn-limpar" onclick="limpar()">LIMPAR TELA</button>
-        <br><a href="index.html" style="color:#666; text-decoration:none; font-size:12px;">Voltar ao Início</a>
+
+    <div class="box">
+        <h2 style="color:#0af">GERADOR DE RELATÓRIO CFSISTEMAS</h2>
+        <button class="btn btn-sync" onclick="sincronizar()">1. SINCRONIZAR MEMÓRIA</button>
+        <button class="btn btn-word" onclick="baixarDoc()">2. GERAR ARQUIVO WORD</button>
+        <button class="btn btn-clear" onclick="limparMemoria()">RESETA MEMÓRIA CHIP</button>
+        <br><br>
+        <a href="index.html" style="color:#666; text-decoration:none;">Voltar ao Monitor Principal</a>
     </div>
 
-    <div id="log">Aguardando comando...</div>
+    <div id="monitor-log">Aguardando sincronização com o chip ESP32...</div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        let ultimo = "";
-        let rodando = false;
+        let logs = [];
 
-        function buscarData() {
-            const d = document.getElementById('data-input').value;
-            if(!d) return alert("Escolha a data!");
-            limpar();
-            document.getElementById('log').innerText = "🔍 Buscando data: " + d;
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=${d}`);
-            iniciar();
-        }
-
-        function buscarTudo() {
-            limpar();
-            document.getElementById('log').innerText = "🛰️ Solicitando memória completa...";
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=1`);
-            iniciar();
-        }
-
-        function limpar() { document.getElementById('log').innerHTML = ""; ultimo = ""; }
-
-        function iniciar() {
-            if (rodando) return; rodando = true;
+        function sincronizar() {
+            document.getElementById('monitor-log').innerText = "Lendo memória do chip... aguarde o fim do arquivo.";
+            logs = []; 
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`);
+            
             setInterval(() => {
                 fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2&_=${Date.now()}`)
                 .then(r => r.text())
-                .then(data => {
-                    let msg = data.replace(/[\[\]"{}]/g, "").replace("V2:", "").trim();
-                    if (msg && msg !== "null" && msg !== ultimo) {
-                        const log = document.getElementById('log');
-                        if(log.innerText.includes("Solicitando") || log.innerText.includes("Aguardando") || log.innerText.includes("Buscando")) log.innerHTML = "";
-                        const div = document.createElement('div');
-                        div.className = (msg.includes("FIRE") || msg.includes("ALARM") || msg.includes("FOGO")) ? "linha-fogo" : "linha";
-                        div.innerText = msg;
-                        log.insertBefore(div, log.firstChild);
-                        ultimo = msg;
+                .then(t => {
+                    let msg = t.replace(/[\[\]"{}]/g, "").replace("V2:", "").trim();
+                    if(msg && !logs.includes(msg) && msg !== "null") {
+                        if(msg === "--- FIM DO ARQUIVO ---") {
+                            alert("Memória carregada com sucesso!");
+                        } else if(msg !== "--- INICIO DO ARQUIVO ---") {
+                            logs.push(msg);
+                            desenhar();
+                        }
                     }
                 });
-            }, 1200);
+            }, 1000);
+        }
+
+        function desenhar() {
+            const display = document.getElementById('monitor-log');
+            display.innerText = "RELATÓRIO DE EVENTOS - CFSISTEMAS\n";
+            display.innerText += "------------------------------------------\n\n";
+            logs.forEach(l => {
+                display.innerText += l + "\n";
+            });
+        }
+
+        function baixarDoc() {
+            const texto = document.getElementById('monitor-log').innerText;
+            const blob = new Blob(['\ufeff' + texto], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'Relatorio_CFSISTEMAS.doc';
+            link.click();
+        }
+
+        function limparMemoria() {
+            if(confirm("Isso apagará TODO o histórico do chip. Confirma?")) {
+                fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=1`);
+                location.reload();
+            }
         }
     </script>
 </body>
