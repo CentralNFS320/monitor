@@ -2,48 +2,27 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Histórico CF SISTEMAS</title>
+    <title>Histórico Local - CF SISTEMAS</title>
     <style>
-        body { background: #000; color: #0f7; font-family: monospace; padding: 20px; }
-        #log { border: 1px solid #333; height: 500px; overflow-y: auto; padding: 10px; background: #050505; margin-bottom: 20px; }
-        .btn { padding: 10px 20px; background: #222; color: #0af; border: 1px solid #0af; cursor: pointer; text-decoration: none; }
+        body { background: #0a0a0a; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; }
+        .card { background: #151515; padding: 40px; border-radius: 20px; max-width: 500px; margin: 40px auto; border: 1px solid #333; }
+        .btn { display: block; padding: 18px; background: #0af; color: #fff; text-decoration: none; border-radius: 12px; margin: 15px 0; font-weight: bold; font-size: 18px; }
+        .btn-limpar { background: #444; font-size: 14px; }
+        .aviso { color: #888; font-size: 13px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
-    <h2>📜 HISTÓRICO DA MEMÓRIA ESP32</h2>
-    <div id="log">Aguardando dados...</div>
-    
-    <button class="btn" onclick="solicitarCarga()">CARREGAR MEMÓRIA COMPLETA</button>
-    <a href="index.html" class="btn">VOLTAR</a>
-
-    <script>
-        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        let ultimaMensagem = "";
-
-        function solicitarCarga() {
-            document.getElementById('log').innerHTML = "Lendo memória do ESP32...";
-            // Aciona o V3 no ESP32 para ele começar a despejar o arquivo no V2
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`);
-        }
-
-        function monitorarV2() {
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2&_=${Date.now()}`)
-                .then(r => r.text())
-                .then(data => {
-                    let msg = data.replace(/[\[\]"{}]/g, "").replace("V2:", "").trim();
-                    
-                    // Se a mensagem for nova, adiciona na lista (sem apagar as anteriores)
-                    if (msg !== "" && msg !== "null" && msg !== ultimaMensagem) {
-                        const logDiv = document.getElementById('log');
-                        if(logDiv.innerText.includes("Aguardando") || logDiv.innerText.includes("Lendo")) logDiv.innerHTML = "";
-                        
-                        logDiv.innerHTML = `<div>> ${msg}</div>` + logDiv.innerHTML;
-                        ultimaMensagem = msg;
-                    }
-                });
-        }
-
-        setInterval(monitorarV2, 1500);
-    </script>
+    <h1 style="color:#0af">CF SISTEMAS</h1>
+    <div class="card">
+        <h2>HISTÓRICO DE EVENTOS</h2>
+        <p class="aviso">Para acessar a memória interna, você deve estar conectado no mesmo Wi-Fi da central.</p>
+        
+        <a href="http://cfsistemas.local/log" target="_blank" class="btn">📥 ABRIR LOG (800 EVENTOS)</a>
+        
+        <a href="index.html" class="btn" style="background:#222; border: 1px solid #0af;">VOLTAR AO PAINEL</a>
+        
+        <hr style="border:0; border-top:1px solid #333; margin:20px 0;">
+        <a href="http://cfsistemas.local/limpar" class="btn btn-limpar" onclick="return confirm('Deseja apagar todos os 800 eventos da memória?')">🗑️ LIMPAR MEMÓRIA INTERNA</a>
+    </div>
 </body>
 </html>
