@@ -7,7 +7,7 @@
         body {
             background-color: #000;
             color: #fff;
-            font-family: 'Courier New', Courier, monospace; /* Fonte técnica */
+            font-family: 'Courier New', Courier, monospace;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -17,7 +17,7 @@
 
         .container { text-align: center; width: 95%; max-width: 800px; }
 
-        /* IDENTIFICAÇÃO BRANCA FORA DO QUADRO */
+        /* IDENTIFICAÇÃO BRANCA NO TOPO */
         .identificacao {
             color: #ffffff;
             font-size: 28px;
@@ -29,18 +29,16 @@
         /* O QUADRO (CARD) */
         .painel {
             padding: 40px 20px;
-            border-radius: 5px;
+            border-radius: 10px;
             background-color: #1a1a1a;
             border: 1px solid #333;
             min-height: 200px;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-            transition: 0.4s;
+            transition: 0.5s;
         }
 
-        /* TEXTO DO STATUS */
         .status-texto {
             font-size: 32px;
             font-weight: bold;
@@ -49,39 +47,38 @@
             padding: 0 20px;
         }
 
-        /* --- CORES EXTRAÍDAS DO SEU PRINT --- */
+        /* --- CORES COM EFEITO DE REFLEXO LUMINOSO (GLOW) --- */
 
-        /* MODO ALARME: Fundo Vinho / Letra Vermelha / Barra Reflexo */
+        /* MODO ALARME: Fundo Vinho / Letra Vermelha / Reflexo Vermelho */
         .alarme-on { 
-            background-color: #3d0000 !important; /* Vermelho bem escuro/vinho */
-            border-left: 10px solid #ff3333 !important; /* Reflexo lateral vivo */
-            box-shadow: 0 0 30px rgba(255, 0, 0, 0.2);
+            background-color: #3d0000 !important;
+            border: 1px solid #ff3333 !important;
+            box-shadow: 0 0 30px #ff3333; /* O REFLEXO LUMINOSO */
         }
-        .alarme-on .status-texto { 
-            color: #ff3333 !important; /* Letra vermelha viva igual ao print */
-        }
+        .alarme-on .status-texto { color: #ff3333 !important; }
 
-        /* MODO FALHA: Fundo Marrom / Letra Amarela */
+        /* MODO FALHA: Fundo Marrom / Letra Amarela / Reflexo Amarelo */
         .falha-on { 
             background-color: #332b00 !important;
-            border-left: 10px solid #ffcc00 !important;
+            border: 1px solid #ffcc00 !important;
+            box-shadow: 0 0 30px #ffcc00;
         }
         .falha-on .status-texto { color: #ffcc00 !important; }
 
-        /* MODO NORMAL: Fundo Verde Escuro / Letra Verde */
+        /* MODO NORMAL: Fundo Verde Escuro / Letra Verde / Reflexo Verde */
         .normal-on { 
             background-color: #002200 !important; 
-            border-left: 10px solid #00ff00 !important;
+            border: 1px solid #00ff00 !important;
+            box-shadow: 0 0 20px #00ff00;
         }
         .normal-on .status-texto { color: #00ff00 !important; }
 
         .btn-link {
             display: inline-block;
             margin-top: 40px;
-            color: #0af;
+            color: #444;
             text-decoration: none;
-            font-size: 14px;
-            border-bottom: 1px solid #0af;
+            font-size: 13px;
         }
     </style>
 </head>
@@ -94,14 +91,14 @@
             <div class="status-texto" id="texto">AGUARDANDO CENTRAL...</div>
         </div>
 
-        <a href="historico.html" class="btn-link">RASTREADOR DE EVENTOS (V3/V4)</a>
+        <a href="historico.html" class="btn-link">RASTREADOR DE EVENTOS</a>
     </div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
         async function atualizar() {
-            // Timestamp no final garante atualização a cada 3s sem cache
+            // Atualiza a cada 3 segundos exatos
             const url = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${Date.now()}`;
             
             try {
@@ -117,7 +114,6 @@
                 texto.innerText = msg;
                 let m = msg.toUpperCase();
 
-                // Limpa classes
                 quadro.className = "painel";
 
                 if (m.includes("FIRE") || m.includes("ALARM") || m.includes("FOGO") || m.includes("INCENDIO")) {
@@ -135,7 +131,6 @@
             }
         }
 
-        // Intervalo exato de 3 segundos
         setInterval(atualizar, 3000);
         atualizar();
     </script>
