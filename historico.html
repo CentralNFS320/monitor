@@ -2,75 +2,60 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Histórico - CF SISTEMAS</title>
+    <title>Histórico CF SISTEMAS</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #000; color: #fff; text-align: center; padding: 20px; margin: 0; }
-        .topo { background: #111; padding: 20px; border-bottom: 3px solid #0af; position: sticky; top: 0; z-index: 100; }
-        input[type="date"] { padding: 12px; border-radius: 8px; border: none; font-size: 16px; background: #222; color: #fff; margin: 10px; }
-        .btn { padding: 12px 25px; background: #0af; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 8px; }
-        #log { background: #050505; border: 1px solid #222; min-height: 600px; margin-top: 20px; text-align: left; padding: 20px; font-family: 'Courier New', monospace; }
-        .alarme-item { color: #f44; font-weight: bold; background: rgba(255,0,0,0.1); border-left: 5px solid #f44; padding: 10px; margin: 5px 0; border-bottom: 1px solid #222; }
-        .normal-item { border-bottom: 1px solid #111; padding: 8px 0; color: #0f7; }
-        .data-tag { color: #0af; font-size: 12px; margin-right: 10px; }
+        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; }
+        .topo { background: #111; padding: 20px; border-radius: 10px; border-bottom: 3px solid #0af; margin-bottom: 20px; }
+        input[type="date"] { padding: 10px; border-radius: 5px; font-size: 16px; background: #222; color: #fff; border: 1px solid #444; }
+        .btn { padding: 10px 20px; background: #0af; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #log { background: #050505; border: 1px solid #333; height: 600px; overflow-y: auto; text-align: left; padding: 20px; font-family: monospace; }
+        .alarme { color: #f00; font-weight: bold; background: rgba(255,0,0,0.1); padding: 5px; border-left: 4px solid #f00; }
+        .linha { border-bottom: 1px solid #222; padding: 5px 0; color: #0f7; }
     </style>
 </head>
 <body>
     <div class="topo">
-        <h2 style="margin:0 0 10px 0; color:#0af;">🔎 RASTREADOR DE EVENTOS</h2>
+        <h2 style="color:#0af">🔎 RASTREADOR DE EVENTOS (V3/V4)</h2>
         <input type="date" id="calendario">
-        <button class="btn" onclick="buscar()">BUSCAR DATA</button>
-        <button class="btn" style="background:#333" onclick="document.getElementById('log').innerHTML=''">LIMPAR</button>
-        <a href="index.html" style="color:#666; margin-left:15px; text-decoration:none; font-size:14px;">Painel Home</a>
+        <button class="btn" onclick="buscar()">BUSCAR NA MEMÓRIA</button>
+        <a href="index.html" style="color:#666; margin-left:20px; text-decoration:none;">Voltar</a>
     </div>
 
-    <div id="log">Selecione uma data acima para iniciar o rastreamento...</div>
+    <div id="log">Selecione uma data para ler o chip do ESP32...</div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        let ultimaMsg = "";
-        let rodando = false;
+        let ultimo = "";
 
         function buscar() {
-            const dataVal = document.getElementById('calendario').value;
-            if(!dataVal) return alert("Selecione uma data no calendário!");
+            const data = document.getElementById('calendario').value;
+            if(!data) return alert("Escolha a data!");
+            document.getElementById('log').innerHTML = "<div style='color:#0af'>🛰️ Extraindo dados da memória interna...</div>";
             
-            const logDiv = document.getElementById('log');
-            logDiv.innerHTML = "<div style='color:#0af'>🛰️ Conectando ao ESP32 e filtrando memória...</div>";
-            
-            // Envia o comando V3
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=${dataVal}`);
-            
-            if(!rodando) {
-                setInterval(receberDados, 1500);
-                rodando = true;
-            }
+            // Envia o comando de busca para o V3
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=${data}`);
         }
 
-        function receberDados() {
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2&_=${Date.now()}`)
+        setInterval(() => {
+            // Agora o site monitora o V4, que é o canal do histórico
+            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V4&_=${Date.now()}`)
                 .then(r => r.text())
                 .then(data => {
-                    let msg = data.replace(/[\[\]"{}]/g, "").replace("V2:", "").trim();
-                    
-                    if (msg && msg !== "null" && msg !== ultimaMsg) {
-                        const logDiv = document.getElementById('log');
+                    let msg = data.replace(/[\[\]"{}]/g, "").replace("V4:", "").trim();
+                    if (msg && msg !== "null" && msg !== ultimo) {
+                        const log = document.getElementById('log');
+                        if(log.innerText.includes("Extraindo") || log.innerText.includes("Selecione")) log.innerHTML = "";
                         
-                        // Limpa o texto de espera quando chega o primeiro dado
-                        if(logDiv.innerText.includes("Conectando") || logDiv.innerText.includes("Selecione")) {
-                            logDiv.innerHTML = "";
-                        }
-
                         const div = document.createElement('div');
-                        // Se a mensagem bruta tiver indicação de Fogo/Alarme
-                        let isAlarme = msg.includes("FIRE") || msg.includes("ALARM") || msg.includes("FOGO") || msg.includes("INCENDIO");
-                        div.className = isAlarme ? "alarme-item" : "normal-item";
+                        let isAlarme = msg.includes("FIRE") || msg.includes("ALARM") || msg.includes("FOGO");
+                        div.className = isAlarme ? "alarme" : "linha";
                         div.innerText = msg;
                         
-                        logDiv.insertBefore(div, logDiv.firstChild);
-                        ultimaMsg = msg;
+                        log.insertBefore(div, log.firstChild);
+                        ultimo = msg;
                     }
                 });
-        }
+        }, 1500);
     </script>
 </body>
 </html>
