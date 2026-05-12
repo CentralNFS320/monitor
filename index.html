@@ -3,64 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - MONITOR</title>
+    <title>CF SISTEMAS - Real Time</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; text-align: center; margin: 0; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; text-align: center; padding: 20px; }
         .card {
-            background: #151515; padding: 60px 20px; border-radius: 25px; margin: 40px auto;
-            max-width: 500px; border-top: 10px solid #0f7; transition: 0.4s;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            background: #151515; padding: 50px 20px; border-radius: 20px; margin: 30px auto;
+            max-width: 500px; border-top: 10px solid #0f7; transition: 0.3s;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        #status-texto { font-size: 24px; font-weight: bold; text-transform: uppercase; line-height: 1.5; }
-        
-        /* Estados */
-        .alarme { border-top-color: #f00 !important; color: #f00 !important; animation: pulse 1s infinite; }
+        #status-texto { font-size: 22px; font-weight: bold; text-transform: uppercase; }
+        .alarme { border-top-color: #f00 !important; color: #f00 !important; }
         .falha { border-top-color: #ff0 !important; color: #ff0 !important; }
-        
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
-    <h1 style="color:#0af; margin-top:30px;">CF SISTEMAS</h1>
-    <p style="color:#444">MONITORAMENTO REAL-TIME</p>
-
+    <h1 style="color:#0af">CF SISTEMAS</h1>
     <div id="cartao" class="card">
         <div id="status-texto">CONECTANDO...</div>
     </div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
+        let ultimaMsg = "";
 
         function atualizar() {
-            // O sinal "_=" evita que o navegador mostre informação velha (cache)
+            // Buscamos o V1 (Status da Central)
             fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${Date.now()}`)
                 .then(r => r.text())
                 .then(data => {
                     let msg = data.replace(/[\[\]"{}]/g, "").replace("V1:", "").trim();
                     if (!msg || msg === "null" || msg === "") msg = "SISTEMA NORMAL";
+                    
+                    if (msg === ultimaMsg) return; // Não faz nada se a msg for a mesma
+                    ultimaMsg = msg;
 
-                    const texto = document.getElementById('status-texto');
-                    const cartao = document.getElementById('cartao');
-                    texto.innerText = msg;
+                    const txt = document.getElementById('status-texto');
+                    const card = document.getElementById('cartao');
+                    txt.innerText = msg;
 
                     let m = msg.toUpperCase();
-                    cartao.className = "card"; // Reseta classes
+                    card.className = "card";
 
-                    // 1. ALARME (FOGO)
-                    if (m.includes("FIRE") || m.includes("FOGO") || m.includes("ALARM") || m.includes("INCENDIO")) {
-                        cartao.classList.add("alarme");
+                    // Detecção de ALARME
+                    if (m.includes("FIRE") || m.includes("ALARM") || m.includes("FOGO")) {
+                        card.classList.add("alarme");
                     }
-                    // 2. FALHA (PROBL, LPR, ABERTO, CURTO, FALHA, TROUBLE)
-                    else if (m.includes("PROBL") || m.includes("ABERTO") || m.includes("LPR") || m.includes("CIRC") || m.includes("FALHA") || m.includes("FAULT")) {
-                        cartao.classList.add("falha");
-                    }
-                    // 3. NORMAL
-                    else {
-                        texto.style.color = "#0f7";
+                    // Detecção de FALHAS (Incluindo PROBL, LPR, ABERTO que você viu)
+                    else if (m.includes("PROBL") || m.includes("ABERTO") || m.includes("LPR") || m.includes("FALHA") || m.includes("FAULT")) {
+                        card.classList.add("falha");
+                    } else {
+                        txt.style.color = "#0f7";
                     }
                 });
         }
-        setInterval(atualizar, 2000);
+        // Atualiza a cada 1 segundo para pegar a alternância de mensagens da central
+        setInterval(atualizar, 1000);
         atualizar();
     </script>
 </body>
