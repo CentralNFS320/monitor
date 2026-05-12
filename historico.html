@@ -2,59 +2,62 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Histórico - CF SISTEMAS</title>
+    <title>Histórico CF SISTEMAS</title>
     <style>
-        body { background: #0d0d0d; color: #fff; font-family: sans-serif; text-align: center; }
-        .log-container { background: #1a1a1a; padding: 20px; border-radius: 10px; max-width: 600px; margin: 20px auto; border: 1px solid #333; height: 300px; overflow-y: auto; text-align: left; color: #0f7; font-family: monospace; }
-        .btn { background: #0af; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-block; margin: 10px; }
+        body { background: #0a0a0a; color: #fff; font-family: 'Courier New', monospace; text-align: center; padding: 20px; }
+        .log-container { 
+            background: #111; border: 2px solid #333; max-width: 800px; margin: 20px auto; 
+            height: 500px; overflow-y: auto; border-radius: 10px; text-align: left; padding: 15px;
+        }
+        .evento { border-bottom: 1px solid #222; padding: 8px 0; font-size: 14px; }
+        .data { color: #0af; font-weight: bold; margin-right: 10px; }
+        .msg { color: #eee; }
+        .btn { padding: 12px 25px; background: #0af; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .falha { color: #ff0; }
+        .alarme { color: #f00; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>HISTÓRICO DA CENTRAL</h1>
-    <button class="btn" onclick="solicitarHistórico()">Carregar Histórico (Memória ESP32)</button>
-    <div class="log-container" id="log-box">Aguardando dados...</div>
-    <br>
-    <a href="index.html" class="btn" style="background: #444;">Voltar para Home</a>
+    <h1>HISTÓRICO DE EVENTOS (MÁX 800)</h1>
+    
+    <button class="btn" onclick="carregarMemoria()">CARREGAR MEMÓRIA DO ESP32</button>
+    <a href="index.html" style="text-decoration:none; color:#666; margin-left:20px;">Voltar</a>
+
+    <div class="log-container" id="listaEventos">
+        </div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
+        let ultimoEvento = "";
 
-        function solicitarHistórico() {
-            document.getElementById('log-box').innerText = "Solicitando memória ao dispositivo...";
-            // Ativa o V3 no ESP32
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`)
-            .then(() => {
-                setTimeout(buscarV2, 2000); // Espera 2 segundos para o ESP enviar
-            });
+        function carregarMemoria() {
+            document.getElementById('listaEventos').innerHTML = "<div>Lendo memória interna...</div>";
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`);
         }
 
-        function buscarV2() {
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2`)
-            .then(r => r.text())
-            .then(data => {
-                let limpo = data.replace(/[\[\]"{}]/g, "").replace(/^V2:/, "").trim();
-                if (limpo === "null" || limpo === "") {
-                    document.getElementById('log-box').innerText = "Histórico vazio ou dispositivo offline.";
-                } else {
-                    document.getElementById('log-box').innerText = limpo;
-                }
-            });
+        function adicionarNaTela(msg) {
+            if (!msg || msg === "null" || msg === ultimoEvento) return;
+            ultimoEvento = msg;
+
+            const lista = document.getElementById('listaEventos');
+            const data = new Date().toLocaleString();
+            
+            let classe = "msg";
+            if(msg.includes("FIRE") || msg.includes("ALARM")) classe = "alarme";
+            if(msg.includes("PROBL") || msg.includes("ABERTO")) classe = "falha";
+
+            const item = `<div class="evento"><span class="data">[${data}]</span><span class="${classe}">${msg}</span></div>`;
+            
+            // Adiciona no topo
+            lista.innerHTML = item + lista.innerHTML;
         }
 
-        // Monitoramento em tempo real (adiciona novas falhas conforme ocorrem)
+        // Monitora o pino V2 continuamente
         setInterval(() => {
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2`)
-            .then(r => r.text())
-            .then(data => {
-                let msg = data.replace(/[\[\]"{}]/g, "").replace(/^V2:/, "").trim();
-                if(msg !== "null" && msg !== "") {
-                    const box = document.getElementById('log-box');
-                    if(!box.innerText.includes(msg)) {
-                        box.innerHTML = `> ${msg}<br>` + box.innerHTML;
-                    }
-                }
-            });
-        }, 3000);
+            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2&_=${Date.now()}`)
+                .then(r => r.text())
+                .then(adicionarNaTela);
+        }, 2000);
     </script>
 </body>
 </html>
