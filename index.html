@@ -2,134 +2,130 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - MONITOR</title>
     <style>
-        /* Estilo Base - Modo Escuro */
         body { 
-            font-family: 'Segoe UI', Arial, sans-serif; 
             background: #000; 
             color: #fff; 
+            font-family: sans-serif; 
             margin: 0; 
             display: flex; 
-            flex-direction: column; 
             align-items: center; 
             justify-content: center; 
-            height: 100vh;
+            height: 100vh; 
+            text-align: center;
         }
 
-        .container { text-align: center; width: 90%; max-width: 600px; }
-
-        /* CF SISTEMAS - Parte de fora, cor branca */
+        /* IDENTIFICAÇÃO EM BRANCO FORA DO QUADRO */
         .identificacao {
             color: #fff;
-            margin-bottom: 30px;
-            font-size: 24px;
+            font-size: 26px;
             font-weight: bold;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
         }
 
-        /* Estilo do Quadro (Card) - Modo Normal */
+        .container { width: 90%; max-width: 500px; }
+        
+        /* QUADRO DE STATUS COM REFLEXO (GLOW) */
         .card {
             background: #111;
-            padding: 50px 30px;
-            border-radius: 30px;
-            border: 2px solid #333;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-            transition: all 0.4s ease; /* Suavidade na mudança */
+            padding: 50px 20px;
+            border-radius: 15px;
+            border: 2px solid #222;
+            transition: 0.5s;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
         #status-texto { 
-            font-size: 30px; 
-            font-weight: bold; 
-            text-transform: uppercase; 
-            line-height: 1.3;
-            transition: color 0.4s ease;
+            font-size: 32px; 
+            font-weight: 900; 
+            text-transform: uppercase;
         }
 
-        /* --- MODO QUADRO LANTERNA (ALARME/FOGO) --- */
+        /* --- MODO ALARME: VERMELHO ESCURO COM REFLEXO --- */
+        .alarme-on {
+            background-color: #D32F2F !important; /* Vermelho mais escuro */
+            border-color: #B71C1C !important;
+            box-shadow: 0 0 50px #D32F2F; /* Reflexo luminoso em volta */
+        }
         
-        /* 1. O Quadro fica estático */
-        .card.alarme-ativo {
-            background: #f00 !important; /* Quadro vermelho vivo */
-            border-color: #fff; /* Borda branca para destaque */
-            /* 2. O Brilho (Reflexo) vermelho luminoso pulsando ao redor */
-            animation: pulse-reflexo 1s infinite;
+        .alarme-on #status-texto {
+            color: #300 !important; /* Letras no tom do vermelho escuro (quase preto) */
         }
 
-        /* 3. A Escrita dentro do quadro fica branca e luminosa */
-        .card.alarme-ativo #status-texto {
-            color: #fff !important; /* Texto branco para leitura */
-            text-shadow: 0 0 15px #fff, 0 0 5px #fff; /* Brilho neon branco para destaque extremo */
+        /* --- MODO FALHA: AMARELO INDUSTRIAL --- */
+        .falha-on {
+            background-color: #FBC02D !important;
+            box-shadow: 0 0 40px #FBC02D;
+        }
+        .falha-on #status-texto {
+            color: #440 !important; /* Letras escuras no amarelo */
         }
 
-        /* Animação de pulso do brilho (reflexo) vermelho */
-        @keyframes pulse-reflexo {
-            0% { box-shadow: 0 0 60px #f00; }
-            50% { box-shadow: 0 0 80px #f00; }
-            100% { box-shadow: 0 0 60px #f00; }
+        /* --- MODO NORMAL: VERDE --- */
+        .normal-on {
+            background-color: #388E3C !important;
+            box-shadow: 0 0 30px #388E3C;
+        }
+        .normal-on #status-texto {
+            color: #020 !important; /* Letras escuras no verde */
         }
 
-        /* --- MODO NORMAL --- */
-        .normal { color: #0f7; }
-        
-        .btn {
-            display: inline-block; margin-top: 40px; padding: 15px 30px;
-            background: #1a1a1a; color: #0af; border: 2px solid #0af;
-            text-decoration: none; border-radius: 12px; font-weight: bold;
-            transition: 0.3s;
+        .btn-link {
+            display: inline-block; margin-top: 40px; padding: 10px 20px;
+            color: #555; text-decoration: none; font-size: 12px;
+            border: 1px solid #222; border-radius: 5px;
         }
-        .btn:hover { background: #0af; color: #000; box-shadow: 0 0 20px #0af; }
-
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1 class="identificacao">CF SISTEMAS</h1>
-        <p style="color:#444; margin-bottom: 40px; font-size: 14px;">MONITORAMENTO NOTIFIER NFS-320</p>
-
-        <div id="painel-card" class="card">
-            <div id="status-texto">SINCRONIZANDO...</div>
+        <div class="identificacao">CF SISTEMAS</div>
+        
+        <div id="painel" class="card">
+            <div id="status-texto">CARREGANDO...</div>
         </div>
 
-        <a href="historico.html" class="btn">📜 ABRIR RASTREADOR / BUSCA LOCAL</a>
+        <a href="historico.html" class="btn-link">RASTREADOR DE EVENTOS</a>
     </div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
         function atualizar() {
+            // Adicionado timestamp no final para forçar a atualização a cada 3s
             fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${Date.now()}`)
                 .then(r => r.text())
                 .then(data => {
                     let msg = data.replace(/[\[\]"{}]/g, "").replace("V1:", "").trim();
-                    if (!msg || msg === "null" || msg === "") msg = "SISTEMA NORMAL";
+                    if (!msg || msg === "null") msg = "SISTEMA NORMAL";
 
                     const texto = document.getElementById('status-texto');
-                    const quadro = document.getElementById('painel-card');
+                    const painel = document.getElementById('painel');
                     texto.innerText = msg;
 
                     let m = msg.toUpperCase();
 
-                    // Lógica para Ativar o Quadro Lanterna
+                    // Limpa classes anteriores
+                    painel.className = "card";
+
+                    // Lógica de Cores com Letras Escuras e Reflexo
                     if (m.includes("FIRE") || m.includes("ALARM") || m.includes("FOGO") || m.includes("INCENDIO")) {
-                        quadro.classList.add("alarme-ativo");
-                        texto.className = ""; // Limpa classes de cor
+                        painel.classList.add("alarme-on");
                     } 
-                    else {
-                        quadro.classList.remove("alarme-ativo"); // Remove lanterna do quadro
-                        
-                        if (m.includes("NORMAL")) {
-                            texto.className = "normal"; // Cor Verde
-                        } else {
-                            texto.style.color = "#ff0"; // Cor Amarela para Falhas
-                        }
+                    else if (m.includes("FAULT") || m.includes("FALHA") || m.includes("TROUBLE") || m.includes("AVARIA") || m.includes("PROBL") || m.includes("LPR")) {
+                        painel.classList.add("falha-on");
+                    }
+                    else if (m.includes("NORMAL") || m.includes("RESET")) {
+                        painel.classList.add("normal-on");
                     }
                 });
         }
 
-        // Atualização a cada 1.5 segundos
-        setInterval(atualizar, 1500);
+        // ATUALIZAÇÃO EXATA A CADA 3 SEGUNDOS (3000ms)
+        setInterval(atualizar, 3000);
         atualizar();
     </script>
 </body>
