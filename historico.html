@@ -6,76 +6,76 @@
     <style>
         body { background: #121212; color: white; font-family: Arial; text-align: center; padding: 20px; }
         .box { background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; }
-        #monitor-log { background: white; color: black; text-align: left; padding: 40px; min-height: 400px; margin-top: 20px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; }
+        #monitor-log { background: white; color: black; text-align: left; padding: 40px; min-height: 400px; margin-top: 20px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; font-size: 13px; }
         .btn { padding: 15px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 5px; }
         .btn-sync { background: #0af; color: white; }
         .btn-word { background: #2b5797; color: white; }
-        .btn-clear { background: #d32f2f; color: white; }
     </style>
 </head>
 <body>
 
     <div class="box">
-        <h2 style="color:#0af">GERADOR DE RELATÓRIO CFSISTEMAS</h2>
-        <button class="btn btn-sync" onclick="sincronizar()">1. SINCRONIZAR MEMÓRIA</button>
-        <button class="btn btn-word" onclick="baixarDoc()">2. GERAR ARQUIVO WORD</button>
-        <button class="btn btn-clear" onclick="limparMemoria()">RESETA MEMÓRIA CHIP</button>
+        <h2 style="color:#0af">RELATÓRIO CFSISTEMAS (MÁX 800 EVENTOS)</h2>
+        <button class="btn btn-sync" onclick="sincronizar()">1. LER MEMÓRIA DO CHIP</button>
+        <button class="btn btn-word" onclick="baixarDoc()">2. BAIXAR RELATÓRIO WORD</button>
         <br><br>
-        <a href="index.html" style="color:#666; text-decoration:none;">Voltar ao Monitor Principal</a>
+        <a href="index.html" style="color:#666; text-decoration:none; font-size: 12px;">Voltar ao Monitor Principal</a>
     </div>
 
-    <div id="monitor-log">Aguardando sincronização com o chip ESP32...</div>
+    <div id="monitor-log">Aguardando comando de leitura...</div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        let logs = [];
+        let logsAcumulados = [];
 
         function sincronizar() {
-            document.getElementById('monitor-log').innerText = "Lendo memória do chip... aguarde o fim do arquivo.";
-            logs = []; 
+            const display = document.getElementById('monitor-log');
+            display.innerText = "Sincronizando com o chip... por favor, aguarde o fim da leitura.";
+            logsAcumulados = []; 
+            
+            // Avisa o chip para começar a mandar pelo V3
             fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=1`);
             
-            setInterval(() => {
+            // Começa a escutar o V2 repetidamente
+            const intervalo = setInterval(() => {
                 fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2&_=${Date.now()}`)
                 .then(r => r.text())
                 .then(t => {
                     let msg = t.replace(/[\[\]"{}]/g, "").replace("V2:", "").trim();
-                    if(msg && !logs.includes(msg) && msg !== "null") {
+                    
+                    if(msg && msg !== "null" && !logsAcumulados.includes(msg)) {
                         if(msg === "--- FIM DO ARQUIVO ---") {
-                            alert("Memória carregada com sucesso!");
+                            clearInterval(intervalo);
+                            alert("Leitura concluída! Você pode gerar o Word agora.");
                         } else if(msg !== "--- INICIO DO ARQUIVO ---") {
-                            logs.push(msg);
-                            desenhar();
+                            logsAcumulados.push(msg);
+                            atualizarTela();
                         }
                     }
                 });
             }, 1000);
         }
 
-        function desenhar() {
+        function atualizarTela() {
             const display = document.getElementById('monitor-log');
-            display.innerText = "RELATÓRIO DE EVENTOS - CFSISTEMAS\n";
-            display.innerText += "------------------------------------------\n\n";
-            logs.forEach(l => {
-                display.innerText += l + "\n";
-            });
+            let cabecalho = "RELATÓRIO DE EVENTOS - CFSISTEMAS\n";
+            cabecalho += "LIMITADO AOS ÚLTIMOS 800 EVENTOS\n";
+            cabecalho += "------------------------------------------\n\n";
+            
+            // Exibe do mais novo para o mais antigo na tela
+            let listaInvertida = [...logsAcumulados].reverse();
+            display.innerText = cabecalho + listaInvertida.join("\n");
         }
 
         function baixarDoc() {
             const texto = document.getElementById('monitor-log').innerText;
+            // Cria um arquivo Blob que o Windows reconhece como Word
             const blob = new Blob(['\ufeff' + texto], { type: 'application/msword' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
             link.download = 'Relatorio_CFSISTEMAS.doc';
             link.click();
-        }
-
-        function limparMemoria() {
-            if(confirm("Isso apagará TODO o histórico do chip. Confirma?")) {
-                fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=1`);
-                location.reload();
-            }
         }
     </script>
 </body>
