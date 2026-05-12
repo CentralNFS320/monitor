@@ -1,81 +1,87 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <title>CF SISTEMAS - MONITOR</title>
     <style>
-        body { 
-            background: #000; 
-            color: #fff; 
-            font-family: sans-serif; 
-            margin: 0; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
-            text-align: center;
-        }
-
-        /* IDENTIFICAÇÃO EM BRANCO FORA DO QUADRO */
-        .identificacao {
+        body {
+            background-color: #000;
             color: #fff;
-            font-size: 26px;
+            font-family: 'Courier New', Courier, monospace; /* Fonte técnica */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container { text-align: center; width: 95%; max-width: 800px; }
+
+        /* IDENTIFICAÇÃO BRANCA FORA DO QUADRO */
+        .identificacao {
+            color: #ffffff;
+            font-size: 28px;
             font-weight: bold;
-            margin-bottom: 25px;
-            letter-spacing: 1px;
-        }
-
-        .container { width: 90%; max-width: 500px; }
-        
-        /* QUADRO DE STATUS COM REFLEXO (GLOW) */
-        .card {
-            background: #111;
-            padding: 50px 20px;
-            border-radius: 15px;
-            border: 2px solid #222;
-            transition: 0.5s;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-
-        #status-texto { 
-            font-size: 32px; 
-            font-weight: 900; 
+            margin-bottom: 30px;
             text-transform: uppercase;
         }
 
-        /* --- MODO ALARME: VERMELHO ESCURO COM REFLEXO --- */
-        .alarme-on {
-            background-color: #D32F2F !important; /* Vermelho mais escuro */
-            border-color: #B71C1C !important;
-            box-shadow: 0 0 50px #D32F2F; /* Reflexo luminoso em volta */
-        }
-        
-        .alarme-on #status-texto {
-            color: #300 !important; /* Letras no tom do vermelho escuro (quase preto) */
-        }
-
-        /* --- MODO FALHA: AMARELO INDUSTRIAL --- */
-        .falha-on {
-            background-color: #FBC02D !important;
-            box-shadow: 0 0 40px #FBC02D;
-        }
-        .falha-on #status-texto {
-            color: #440 !important; /* Letras escuras no amarelo */
+        /* O QUADRO (CARD) */
+        .painel {
+            padding: 40px 20px;
+            border-radius: 5px;
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: 0.4s;
         }
 
-        /* --- MODO NORMAL: VERDE --- */
-        .normal-on {
-            background-color: #388E3C !important;
-            box-shadow: 0 0 30px #388E3C;
+        /* TEXTO DO STATUS */
+        .status-texto {
+            font-size: 32px;
+            font-weight: bold;
+            text-transform: uppercase;
+            line-height: 1.4;
+            padding: 0 20px;
         }
-        .normal-on #status-texto {
-            color: #020 !important; /* Letras escuras no verde */
+
+        /* --- CORES EXTRAÍDAS DO SEU PRINT --- */
+
+        /* MODO ALARME: Fundo Vinho / Letra Vermelha / Barra Reflexo */
+        .alarme-on { 
+            background-color: #3d0000 !important; /* Vermelho bem escuro/vinho */
+            border-left: 10px solid #ff3333 !important; /* Reflexo lateral vivo */
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.2);
         }
+        .alarme-on .status-texto { 
+            color: #ff3333 !important; /* Letra vermelha viva igual ao print */
+        }
+
+        /* MODO FALHA: Fundo Marrom / Letra Amarela */
+        .falha-on { 
+            background-color: #332b00 !important;
+            border-left: 10px solid #ffcc00 !important;
+        }
+        .falha-on .status-texto { color: #ffcc00 !important; }
+
+        /* MODO NORMAL: Fundo Verde Escuro / Letra Verde */
+        .normal-on { 
+            background-color: #002200 !important; 
+            border-left: 10px solid #00ff00 !important;
+        }
+        .normal-on .status-texto { color: #00ff00 !important; }
 
         .btn-link {
-            display: inline-block; margin-top: 40px; padding: 10px 20px;
-            color: #555; text-decoration: none; font-size: 12px;
-            border: 1px solid #222; border-radius: 5px;
+            display: inline-block;
+            margin-top: 40px;
+            color: #0af;
+            text-decoration: none;
+            font-size: 14px;
+            border-bottom: 1px solid #0af;
         }
     </style>
 </head>
@@ -84,47 +90,52 @@
     <div class="container">
         <div class="identificacao">CF SISTEMAS</div>
         
-        <div id="painel" class="card">
-            <div id="status-texto">CARREGANDO...</div>
+        <div class="painel" id="quadro">
+            <div class="status-texto" id="texto">AGUARDANDO CENTRAL...</div>
         </div>
 
-        <a href="historico.html" class="btn-link">RASTREADOR DE EVENTOS</a>
+        <a href="historico.html" class="btn-link">RASTREADOR DE EVENTOS (V3/V4)</a>
     </div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
-        function atualizar() {
-            // Adicionado timestamp no final para forçar a atualização a cada 3s
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${Date.now()}`)
-                .then(r => r.text())
-                .then(data => {
-                    let msg = data.replace(/[\[\]"{}]/g, "").replace("V1:", "").trim();
-                    if (!msg || msg === "null") msg = "SISTEMA NORMAL";
+        async function atualizar() {
+            // Timestamp no final garante atualização a cada 3s sem cache
+            const url = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${Date.now()}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.text();
+                let msg = data.replace(/[\[\]"{}]/g, "").replace("V1:", "").trim();
+                
+                if(!msg || msg === "null") msg = "SISTEMA NORMAL";
 
-                    const texto = document.getElementById('status-texto');
-                    const painel = document.getElementById('painel');
-                    texto.innerText = msg;
+                const quadro = document.getElementById("quadro");
+                const texto = document.getElementById("texto");
+                
+                texto.innerText = msg;
+                let m = msg.toUpperCase();
 
-                    let m = msg.toUpperCase();
+                // Limpa classes
+                quadro.className = "painel";
 
-                    // Limpa classes anteriores
-                    painel.className = "card";
+                if (m.includes("FIRE") || m.includes("ALARM") || m.includes("FOGO") || m.includes("INCENDIO")) {
+                    quadro.classList.add("alarme-on");
+                } 
+                else if (m.includes("FAULT") || m.includes("FALHA") || m.includes("TROUBLE") || m.includes("AVARIA") || m.includes("DESL")) {
+                    quadro.classList.add("falha-on");
+                }
+                else {
+                    quadro.classList.add("normal-on");
+                }
 
-                    // Lógica de Cores com Letras Escuras e Reflexo
-                    if (m.includes("FIRE") || m.includes("ALARM") || m.includes("FOGO") || m.includes("INCENDIO")) {
-                        painel.classList.add("alarme-on");
-                    } 
-                    else if (m.includes("FAULT") || m.includes("FALHA") || m.includes("TROUBLE") || m.includes("AVARIA") || m.includes("PROBL") || m.includes("LPR")) {
-                        painel.classList.add("falha-on");
-                    }
-                    else if (m.includes("NORMAL") || m.includes("RESET")) {
-                        painel.classList.add("normal-on");
-                    }
-                });
+            } catch (e) {
+                console.log("Erro de busca");
+            }
         }
 
-        // ATUALIZAÇÃO EXATA A CADA 3 SEGUNDOS (3000ms)
+        // Intervalo exato de 3 segundos
         setInterval(atualizar, 3000);
         atualizar();
     </script>
