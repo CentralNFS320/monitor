@@ -3,91 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Monitoramento</title>
+    <title>CF SISTEMAS - MONITOR</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; }
-        
-        h1 { color: #0af; margin-bottom: 5px; }
-        .sub-header { font-size: 14px; color: #666; margin-bottom: 30px; letter-spacing: 1px; }
-
-        .status-card {
-            background: #1a1a1a; padding: 50px 20px; border-radius: 20px; margin: 20px auto;
-            box-shadow: inset 4px 4px 10px #000, 5px 5px 20px rgba(0,0,0,0.5);
-            border-top: 8px solid #00ff7f; transition: 0.4s;
-            min-height: 120px; display: flex; align-items: center; justify-content: center;
+        body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; text-align: center; margin: 0; padding: 20px; }
+        .card {
+            background: #151515; padding: 60px 20px; border-radius: 25px; margin: 40px auto;
+            max-width: 500px; border-top: 10px solid #0f7; transition: 0.4s;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
         }
-
-        #status-texto { font-size: 22px; font-weight: bold; text-transform: uppercase; line-height: 1.4; word-wrap: break-word; }
+        #status-texto { font-size: 24px; font-weight: bold; text-transform: uppercase; line-height: 1.5; }
         
-        .nav-btn { display: inline-block; padding: 18px 40px; background: #222; color: #0af; text-decoration: none; border-radius: 12px; border: 1px solid #333; font-weight: bold; margin-top: 30px; transition: 0.3s; }
+        /* Estados */
+        .alarme { border-top-color: #f00 !important; color: #f00 !important; animation: pulse 1s infinite; }
+        .falha { border-top-color: #ff0 !important; color: #ff0 !important; }
         
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
-            50% { background: #400; }
-            100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
-        }
-        .alarme-ativo { animation: pulse-red 1.2s infinite; border-top-color: #f00 !important; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>CF SISTEMAS</h1>
-        <div class="sub-header">MONITORAMENTO REAL-TIME</div>
-        
-        <div id="cartao" class="status-card">
-            <div id="status-texto">CARREGANDO...</div>
-        </div>
-        
-        <a href="historico.html" class="nav-btn">📜 VER HISTÓRICO COMPLETO</a>
+    <h1 style="color:#0af; margin-top:30px;">CF SISTEMAS</h1>
+    <p style="color:#444">MONITORAMENTO REAL-TIME</p>
+
+    <div id="cartao" class="card">
+        <div id="status-texto">CONECTANDO...</div>
     </div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        const URL_API = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1`;
 
         function atualizar() {
-            fetch(`${URL_API}&_=${new Date().getTime()}`)
+            // O sinal "_=" evita que o navegador mostre informação velha (cache)
+            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${Date.now()}`)
                 .then(r => r.text())
                 .then(data => {
-                    // Limpeza de caracteres do Blynk
-                    let msg = data.replace(/[\[\]"{}]/g, "").replace(/^V1:/, "").trim();
-
-                    if (!msg || msg === "" || msg === "null") {
-                        msg = "SISTEMA NORMAL";
-                    }
+                    let msg = data.replace(/[\[\]"{}]/g, "").replace("V1:", "").trim();
+                    if (!msg || msg === "null" || msg === "") msg = "SISTEMA NORMAL";
 
                     const texto = document.getElementById('status-texto');
                     const cartao = document.getElementById('cartao');
-                    
                     texto.innerText = msg;
-                    let mU = msg.toUpperCase();
 
-                    // Limpa animações anteriores
-                    cartao.classList.remove("alarme-ativo");
+                    let m = msg.toUpperCase();
+                    cartao.className = "card"; // Reseta classes
 
-                    // 1. VERMELHO (FOGO / ALARME)
-                    if (mU.includes("FIRE") || mU.includes("FOGO") || mU.includes("ALARM") || mU.includes("INCENDIO")) {
-                        cartao.style.borderTopColor = "#ff0000";
-                        texto.style.color = "#ff0000";
-                        cartao.classList.add("alarme-ativo");
-                    } 
-                    // 2. AMARELO (PROBL, FALHA, TROUBLE, DIRTY)
-                    else if (mU.includes("PROBL") || mU.includes("FAULT") || mU.includes("FALHA") || mU.includes("TROUBLE") || mU.includes("DIRTY")) {
-                        cartao.style.borderTopColor = "#ffff00";
-                        texto.style.color = "#ffff00";
-                    } 
-                    // 3. VERDE (SISTEMA NORMAL OU QUALQUER OUTRA MENSAGEM LIMPA)
-                    else {
-                        cartao.style.borderTopColor = "#00ff7f";
-                        texto.style.color = "#00ff7f";
+                    // 1. ALARME (FOGO)
+                    if (m.includes("FIRE") || m.includes("FOGO") || m.includes("ALARM") || m.includes("INCENDIO")) {
+                        cartao.classList.add("alarme");
                     }
-                })
-                .catch(err => {
-                    document.getElementById('status-texto').innerText = "ERRO DE CONEXÃO";
+                    // 2. FALHA (PROBL, LPR, ABERTO, CURTO, FALHA, TROUBLE)
+                    else if (m.includes("PROBL") || m.includes("ABERTO") || m.includes("LPR") || m.includes("CIRC") || m.includes("FALHA") || m.includes("FAULT")) {
+                        cartao.classList.add("falha");
+                    }
+                    // 3. NORMAL
+                    else {
+                        texto.style.color = "#0f7";
+                    }
                 });
         }
-
         setInterval(atualizar, 2000);
         atualizar();
     </script>
