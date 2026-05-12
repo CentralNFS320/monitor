@@ -1,111 +1,135 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Monitor Real Time</title>
+    <title>CF SISTEMAS - MONITOR</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        /* Estilo Base - Modo Escuro */
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            background: #000; 
+            color: #fff; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
             height: 100vh;
-            margin: 0;
-        }
-        .painel {
-            text-align: center;
-            padding: 40px;
-            border-radius: 15px;
-            width: 80%;
-            max-width: 500px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            transition: background-color 0.5s ease;
-            background-color: #222222; /* Cor inicial neutra */
-        }
-        h1 {
-            margin-bottom: 20px;
-            font-size: 24px;
-            color: #0af; /* CF SISTEMAS em Azul */
-        }
-        .status-texto {
-            font-size: 24px;
-            font-weight: bold;
-            word-wrap: break-word;
-            transition: color 0.5s ease;
         }
 
-        /* CONFIGURAÇÃO DE CORES COM LETRAS ESCURAS (ESTÁTICO) */
-        .alarme-estatico { background-color: #D32F2F !important; color: #300 !important; }
-        .falha-estatica { background-color: #FBC02D !important; color: #440 !important; }
-        .normal-estatico { background-color: #388E3C !important; color: #020 !important; }
-        
-        .btn-link {
-            display: inline-block;
-            margin-top: 25px;
-            color: #555;
-            text-decoration: none;
-            font-size: 12px;
-            border: 1px solid #333;
-            padding: 5px 10px;
-            border-radius: 4px;
+        .container { text-align: center; width: 90%; max-width: 600px; }
+
+        /* CF SISTEMAS - Parte de fora, cor branca */
+        .identificacao {
+            color: #fff;
+            margin-bottom: 30px;
+            font-size: 24px;
+            font-weight: bold;
         }
+
+        /* Estilo do Quadro (Card) - Modo Normal */
+        .card {
+            background: #111;
+            padding: 50px 30px;
+            border-radius: 30px;
+            border: 2px solid #333;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            transition: all 0.4s ease; /* Suavidade na mudança */
+        }
+
+        #status-texto { 
+            font-size: 30px; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            line-height: 1.3;
+            transition: color 0.4s ease;
+        }
+
+        /* --- MODO QUADRO LANTERNA (ALARME/FOGO) --- */
+        
+        /* 1. O Quadro fica estático */
+        .card.alarme-ativo {
+            background: #f00 !important; /* Quadro vermelho vivo */
+            border-color: #fff; /* Borda branca para destaque */
+            /* 2. O Brilho (Reflexo) vermelho luminoso pulsando ao redor */
+            animation: pulse-reflexo 1s infinite;
+        }
+
+        /* 3. A Escrita dentro do quadro fica branca e luminosa */
+        .card.alarme-ativo #status-texto {
+            color: #fff !important; /* Texto branco para leitura */
+            text-shadow: 0 0 15px #fff, 0 0 5px #fff; /* Brilho neon branco para destaque extremo */
+        }
+
+        /* Animação de pulso do brilho (reflexo) vermelho */
+        @keyframes pulse-reflexo {
+            0% { box-shadow: 0 0 60px #f00; }
+            50% { box-shadow: 0 0 80px #f00; }
+            100% { box-shadow: 0 0 60px #f00; }
+        }
+
+        /* --- MODO NORMAL --- */
+        .normal { color: #0f7; }
+        
+        .btn {
+            display: inline-block; margin-top: 40px; padding: 15px 30px;
+            background: #1a1a1a; color: #0af; border: 2px solid #0af;
+            text-decoration: none; border-radius: 12px; font-weight: bold;
+            transition: 0.3s;
+        }
+        .btn:hover { background: #0af; color: #000; box-shadow: 0 0 20px #0af; }
+
     </style>
 </head>
 <body>
 
-    <div class="painel" id="painel-status">
-        <h1 id="titulo-sistema">CF SISTEMAS</h1>
-        <div class="status-texto" id="texto-notifier">Sincronizando...</div>
-        <a href="historico.html" class="btn-link">RASTREADOR DE EVENTOS</a>
+    <div class="container">
+        <h1 class="identificacao">CF SISTEMAS</h1>
+        <p style="color:#444; margin-bottom: 40px; font-size: 14px;">MONITORAMENTO NOTIFIER NFS-320</p>
+
+        <div id="painel-card" class="card">
+            <div id="status-texto">SINCRONIZANDO...</div>
+        </div>
+
+        <a href="historico.html" class="btn">📜 ABRIR RASTREADOR / BUSCA LOCAL</a>
     </div>
 
     <script>
-        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa"; 
+        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
-        function atualizarEstilo(mensagem) {
-            const divPainel = document.getElementById("painel-status");
-            const divTexto = document.getElementById("texto-notifier");
-            let mU = mensagem.toUpperCase();
-            
-            // Limpa classes anteriores
-            divPainel.classList.remove("alarme-estatico", "falha-estatica", "normal-estatico");
-            divPainel.style.backgroundColor = ""; 
+        function atualizar() {
+            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${Date.now()}`)
+                .then(r => r.text())
+                .then(data => {
+                    let msg = data.replace(/[\[\]"{}]/g, "").replace("V1:", "").trim();
+                    if (!msg || msg === "null" || msg === "") msg = "SISTEMA NORMAL";
 
-            if (mU.includes("FIRE") || mU.includes("ALARM") || mU.includes("FOGO") || mU.includes("INCENDIO")) {
-                divPainel.classList.add("alarme-estatico");
-            } 
-            else if (mU.includes("FAULT") || mU.includes("FALHA") || mU.includes("TROUBLE") || mU.includes("AVARIA") || mU.includes("PROBL") || mU.includes("LPR")) {
-                divPainel.classList.add("falha-estatica");
-            }
-            else if (mU.includes("NORMAL") || mU.includes("RESET")) {
-                divPainel.classList.add("normal-estatico");
-            } else {
-                divPainel.style.backgroundColor = "#222";
-                divTexto.style.color = "#fff";
-            }
+                    const texto = document.getElementById('status-texto');
+                    const quadro = document.getElementById('painel-card');
+                    texto.innerText = msg;
+
+                    let m = msg.toUpperCase();
+
+                    // Lógica para Ativar o Quadro Lanterna
+                    if (m.includes("FIRE") || m.includes("ALARM") || m.includes("FOGO") || m.includes("INCENDIO")) {
+                        quadro.classList.add("alarme-ativo");
+                        texto.className = ""; // Limpa classes de cor
+                    } 
+                    else {
+                        quadro.classList.remove("alarme-ativo"); // Remove lanterna do quadro
+                        
+                        if (m.includes("NORMAL")) {
+                            texto.className = "normal"; // Cor Verde
+                        } else {
+                            texto.style.color = "#ff0"; // Cor Amarela para Falhas
+                        }
+                    }
+                });
         }
 
-        async function atualizar() {
-            const url = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${Date.now()}`;
-            try {
-                const response = await fetch(url);
-                const texto = await response.text();
-                let msg = texto.replace(/[\[\]"{}]/g, "").replace("V1:", "").trim();
-                
-                if(!msg || msg === "null") msg = "SISTEMA NORMAL";
-
-                document.getElementById("texto-notifier").innerText = msg;
-                atualizarEstilo(msg);
-
-            } catch (e) {
-                console.log("Erro de conexão");
-            }
-        }
-
-        setInterval(atualizar, 2000);
+        // Atualização a cada 1.5 segundos
+        setInterval(atualizar, 1500);
         atualizar();
     </script>
 </body>
