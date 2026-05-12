@@ -2,53 +2,50 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Histórico CF SISTEMAS</title>
+    <title>CF SISTEMAS - Histórico</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; }
-        .topo { background: #111; padding: 20px; border-radius: 10px; border-bottom: 3px solid #0af; margin-bottom: 20px; }
-        input[type="date"] { padding: 10px; border-radius: 5px; font-size: 16px; background: #222; color: #fff; border: 1px solid #444; }
-        .btn { padding: 10px 20px; background: #0af; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        #log { background: #050505; border: 1px solid #333; height: 600px; overflow-y: auto; text-align: left; padding: 20px; font-family: monospace; }
-        .alarme { color: #f00; font-weight: bold; background: rgba(255,0,0,0.1); padding: 5px; border-left: 4px solid #f00; }
-        .linha { border-bottom: 1px solid #222; padding: 5px 0; color: #0f7; }
+        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; padding: 15px; }
+        .topo { background: #111; padding: 20px; border-bottom: 3px solid #0af; margin-bottom: 20px; border-radius: 10px; }
+        input[type="date"] { padding: 10px; border-radius: 5px; font-size: 16px; margin: 10px; border: none; }
+        .btn { padding: 12px 20px; background: #0af; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #log { background: #050505; border: 1px solid #333; height: 550px; overflow-y: auto; text-align: left; padding: 20px; font-family: monospace; font-size: 13px; }
+        .alarme { color: #f44; font-weight: bold; border-left: 4px solid #f44; padding-left: 10px; background: rgba(255,0,0,0.1); margin-bottom: 5px; }
+        .normal { border-bottom: 1px solid #222; padding: 5px 0; color: #0f7; }
     </style>
 </head>
 <body>
     <div class="topo">
-        <h2 style="color:#0af">🔎 RASTREADOR DE EVENTOS (V3/V4)</h2>
-        <input type="date" id="calendario">
-        <button class="btn" onclick="buscar()">BUSCAR NA MEMÓRIA</button>
-        <a href="index.html" style="color:#666; margin-left:20px; text-decoration:none;">Voltar</a>
+        <h2 style="color:#0af; margin:0;">🔎 BUSCA NA MEMÓRIA (V3/V4)</h2>
+        <input type="date" id="cal">
+        <button class="btn" onclick="buscar()">BUSCAR</button>
+        <a href="index.html" style="color:#666; text-decoration:none; margin-left:15px;">Painel Home</a>
     </div>
 
-    <div id="log">Selecione uma data para ler o chip do ESP32...</div>
+    <div id="log">Selecione uma data para extrair o log do ESP32...</div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
         let ultimo = "";
 
         function buscar() {
-            const data = document.getElementById('calendario').value;
-            if(!data) return alert("Escolha a data!");
-            document.getElementById('log').innerHTML = "<div style='color:#0af'>🛰️ Extraindo dados da memória interna...</div>";
-            
-            // Envia o comando de busca para o V3
+            const data = document.getElementById('cal').value;
+            if(!data) return alert("Escolha uma data!");
+            document.getElementById('log').innerHTML = "🛰️ Buscando dados no chip... aguarde...";
             fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=${data}`);
         }
 
         setInterval(() => {
-            // Agora o site monitora o V4, que é o canal do histórico
             fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V4&_=${Date.now()}`)
                 .then(r => r.text())
                 .then(data => {
                     let msg = data.replace(/[\[\]"{}]/g, "").replace("V4:", "").trim();
                     if (msg && msg !== "null" && msg !== ultimo) {
                         const log = document.getElementById('log');
-                        if(log.innerText.includes("Extraindo") || log.innerText.includes("Selecione")) log.innerHTML = "";
+                        if(log.innerText.includes("Buscando") || log.innerText.includes("Selecione")) log.innerHTML = "";
                         
                         const div = document.createElement('div');
-                        let isAlarme = msg.includes("FIRE") || msg.includes("ALARM") || msg.includes("FOGO");
-                        div.className = isAlarme ? "alarme" : "linha";
+                        let isAlarme = msg.includes("FIRE") || msg.includes("ALARM") || msg.includes("FOGO") || msg.includes("INCENDIO");
+                        div.className = isAlarme ? "alarme" : "normal";
                         div.innerText = msg;
                         
                         log.insertBefore(div, log.firstChild);
