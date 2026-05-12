@@ -2,80 +2,93 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Monitor Real Time</title>
+    <title>CF SISTEMAS - MONITOR</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: #ffffff;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
         }
-        .painel {
-            text-align: center;
+
+        /* O QUADRO COM EFEITO DE BAIXO RELEVO */
+        .painel-industrial {
+            width: 85%;
+            max-width: 550px;
             padding: 40px;
-            border-radius: 15px;
-            width: 80%;
-            max-width: 500px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            transition: background-color 0.5s ease;
-            background-color: #222222; /* Cor inicial neutra */
+            border-radius: 10px;
+            background-color: #1a1a1a; /* Cor de fundo do painel */
+            border: 2px solid #333;
+            box-shadow: inset 0 0 15px rgba(0,0,0,1), 0 5px 15px rgba(0,0,0,0.5);
+            text-align: center;
+            transition: background-color 0.4s ease;
         }
+
         h1 {
-            margin-bottom: 20px;
-            font-size: 24px;
-            color: #0af; /* Azul padrão CF SISTEMAS no título */
-        }
-        .status-texto {
+            color: #0af;
             font-size: 22px;
-            font-weight: bold;
-            word-wrap: break-word;
+            margin-bottom: 30px;
+            letter-spacing: 2px;
         }
+
+        /* TEXTO DENTRO DO QUADRO */
+        .status-display {
+            font-size: 32px;
+            font-weight: 900;
+            padding: 30px;
+            border-radius: 5px;
+            background-color: #222; /* Fundo interno inicial */
+            box-shadow: inset 4px 4px 10px rgba(0,0,0,0.8); /* Efeito de profundidade */
+            color: #444; /* Letras escuras por padrão */
+            text-transform: uppercase;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* CORES ESTÁTICAS (IGUAL AO PRIMEIRO PROGRAMA) */
+        .fundo-alarme { 
+            background-color: #D32F2F !important; /* Vermelho Escuro */
+            color: #300 !important; /* Letras em Vermelho Muito Escuro */
+        }
+
+        .fundo-falha { 
+            background-color: #FBC02D !important; /* Amarelo Industrial */
+            color: #440 !important; /* Letras em Marrom/Amarelo Escuro */
+        }
+
+        .fundo-normal { 
+            background-color: #388E3C !important; /* Verde Industrial */
+            color: #020 !important; /* Letras em Verde Escuro */
+        }
+
         .btn-link {
             display: inline-block;
-            margin-top: 25px;
-            color: #aaa;
+            margin-top: 30px;
+            color: #555;
             text-decoration: none;
-            font-size: 14px;
-            border: 1px solid #444;
-            padding: 8px 15px;
-            border-radius: 5px;
+            font-size: 12px;
+            text-transform: uppercase;
         }
     </style>
 </head>
 <body>
 
-    <div class="painel" id="painel-status">
-        <h1 id="titulo-sistema">CF SISTEMAS</h1>
-        <div class="status-texto" id="texto-notifier">Sincronizando com a central...</div>
-        <a href="historico.html" class="btn-link">📜 Abrir Rastreador de Eventos</a>
+    <div class="painel-industrial">
+        <h1>CF SISTEMAS</h1>
+        <div id="display" class="status-display">
+            Sincronizando...
+        </div>
+        <a href="historico.html" class="btn-link">Rastreador de Eventos</a>
     </div>
 
     <script>
-        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa"; 
-
-        function obterCorPorMensagem(mensagem) {
-            let mU = mensagem.toUpperCase();
-            
-            // 1. Vermelho: Fogo ou Alarmes
-            if (mU.includes("FIRE") || mU.includes("ALARM") || mU.includes("FOGO") || mU.includes("INCENDIO")) {
-                return "#D32F2F"; 
-            }
-            // 2. Amarelo: Falhas ou Avarias
-            if (mU.includes("FAULT") || mU.includes("FALHA") || mU.includes("TROUBLE") || mU.includes("AVARIA") || mU.includes("DESL")) {
-                return "#FBC02D"; 
-            }
-            // 3. Verde: Normal ou Reset
-            if (mU.includes("NORMAL") || mU.includes("RESET") || mU.includes("RESTORE")) {
-                return "#388E3C"; 
-            }
-            
-            return "#222222"; // Neutro
-        }
+        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
 
         async function atualizar() {
             const url = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${Date.now()}`;
@@ -83,22 +96,35 @@
             try {
                 const response = await fetch(url);
                 const textoPuro = await response.text();
-                
-                const divTexto = document.getElementById("texto-notifier");
-                const divPainel = document.getElementById("painel-status");
-
                 let msg = textoPuro.replace(/[\[\]"{}]/g, "").replace("V1:", "").trim();
+                
                 if(!msg || msg === "null") msg = "SISTEMA NORMAL";
 
-                divTexto.innerText = msg;
-                divPainel.style.backgroundColor = obterCorPorMensagem(msg);
+                const display = document.getElementById("display");
+                display.innerText = msg;
+
+                let m = msg.toUpperCase();
+
+                // REMOVE TODAS AS CLASSES ANTES DE APLICAR A NOVA
+                display.classList.remove("fundo-alarme", "fundo-falha", "fundo-normal");
+
+                // LÓGICA DE CORES ESTÁTICAS E LETRAS ESCURAS
+                if (m.includes("FIRE") || m.includes("ALARM") || m.includes("FOGO") || m.includes("INCENDIO")) {
+                    display.classList.add("fundo-alarme");
+                } 
+                else if (m.includes("FAULT") || m.includes("FALHA") || m.includes("TROUBLE") || m.includes("AVARIA") || m.includes("PROBL") || m.includes("LPR")) {
+                    display.classList.add("fundo-falha");
+                }
+                else if (m.includes("NORMAL") || m.includes("RESET")) {
+                    display.classList.add("fundo-normal");
+                }
 
             } catch (error) {
-                console.error("Erro:", error);
+                console.error("Erro de conexão");
             }
         }
 
-        setInterval(atualizar, 2000);
+        setInterval(atualizar, 1500);
         atualizar();
     </script>
 </body>
