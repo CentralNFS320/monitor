@@ -2,79 +2,103 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>CFSISTEMAS - Histórico</title>
+    <title>CFSISTEMAS - Histórico Profissional</title>
+    <script src="https://cdn.rawgit.com/evidenceprime/html-docx-js/master/dist/html-docx.js"></script>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; padding: 15px; }
+        body { background: #000; color: #fff; font-family: Arial, sans-serif; text-align: center; padding: 15px; }
         .topo { background: #0a0a0a; padding: 20px; border: 2px solid #222; border-radius: 12px; margin-bottom: 20px; }
         input[type="date"] { padding: 10px; border-radius: 5px; background: #222; color: #fff; border: 1px solid #444; }
-        .btn { padding: 12px 20px; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 5px; transition: 0.3s; }
+        .btn { padding: 12px 20px; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 5px; }
         .btn-data { background: #0af; }
         .btn-tudo { background: #388E3C; }
+        .btn-word { background: #2b5797; } /* Azul Word */
         .btn-limpar { background: #444; }
-        #log { background: #050505; border: 1px solid #222; height: 500px; overflow-y: auto; text-align: left; padding: 20px; font-family: monospace; font-size: 14px; margin-top: 15px; }
-        .linha { border-bottom: 1px solid #111; padding: 5px 0; color: #0f7; }
-        .linha-fogo { color: #f44; font-weight: bold; background: rgba(255,0,0,0.1); padding: 5px; border-left: 4px solid #f44; }
+        #log-container { background: #ffffff; color: #000; border: 1px solid #ccc; height: 500px; overflow-y: auto; text-align: left; padding: 30px; font-family: 'Courier New', Courier, monospace; margin-top: 15px; }
+        .linha { border-bottom: 1px solid #eee; padding: 5px 0; color: #333; }
+        .linha-fogo { color: #d32f2f; font-weight: bold; background: #ffebee; border-left: 5px solid #d32f2f; padding: 5px; }
+        .linha-falha { color: #856404; background: #fff3cd; border-left: 5px solid #ffeeba; padding: 5px; }
     </style>
 </head>
 <body>
-
     <div class="topo">
-        <h2 style="color:#0af; margin-top:0;">CFSISTEMAS - RASTREADOR</h2>
-        <input type="date" id="input-data">
-        <button class="btn btn-data" onclick="carregarData()">BUSCAR DATA</button>
-        <button class="btn btn-tudo" onclick="carregarTudo()">CARREGAR TUDO</button>
-        <button class="btn btn-limpar" onclick="limpar()">LIMPAR TELA</button>
-        <br><br>
-        <a href="index.html" style="color:#666; text-decoration:none; font-size:12px;">Voltar ao Painel Home</a>
+        <h2 style="color:#0af; margin:0 0 15px 0;">RELATÓRIO CFSISTEMAS</h2>
+        <input type="date" id="data-input">
+        <button class="btn btn-data" onclick="buscarData()">CARREGAR DATA</button>
+        <button class="btn btn-tudo" onclick="buscarTudo()">CARREGAR TUDO</button>
+        <button class="btn btn-word" onclick="baixarWord()">BAIXAR RELATÓRIO WORD</button>
+        <button class="btn btn-limpar" onclick="limpar()">LIMPAR</button>
+        <br><a href="index.html" style="color:#666; text-decoration:none; font-size:12px; display:block; margin-top:10px;">Voltar ao Painel</a>
     </div>
 
-    <div id="log">Aguardando comando...</div>
+    <div id="log-container">
+        <h1 style="text-align:center; color:#2b5797;">Relatório de Eventos - CFSISTEMAS</h1>
+        <hr>
+        <div id="log-corpo">Aguardando carregamento de dados...</div>
+    </div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
         let ultimo = "";
         let rodando = false;
 
-        function carregarData() {
-            const data = document.getElementById('input-data').value;
-            if(!data) return alert("Selecione uma data!");
+        function buscarData() {
+            const d = document.getElementById('data-input').value;
+            if(!d) return alert("Selecione a data!");
             limpar();
-            document.getElementById('log').innerText = "🔍 Buscando dia " + data + "...";
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=${data}`);
-            iniciarEscuta();
+            document.getElementById('log-corpo').innerText = "Processando busca por data...";
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=${d}`);
+            iniciar();
         }
 
-        function carregarTudo() {
+        function buscarTudo() {
             limpar();
-            document.getElementById('log').innerText = "🛰️ Carregando todos os eventos da memória...";
+            document.getElementById('log-corpo').innerText = "Extraindo memória completa...";
             fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=1`);
-            iniciarEscuta();
+            iniciar();
         }
 
-        function limpar() { document.getElementById('log').innerHTML = ""; ultimo = ""; }
+        function limpar() { document.getElementById('log-corpo').innerHTML = ""; ultimo = ""; }
 
-        function iniciarEscuta() {
-            if (rodando) return;
-            rodando = true;
+        function iniciar() {
+            if (rodando) return; rodando = true;
             setInterval(() => {
                 fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2&_=${Date.now()}`)
                 .then(r => r.text())
                 .then(data => {
                     let msg = data.replace(/[\[\]"{}]/g, "").replace("V2:", "").trim();
                     if (msg && msg !== "null" && msg !== ultimo) {
-                        const log = document.getElementById('log');
-                        if(log.innerText.includes("Carregando") || log.innerText.includes("Aguardando") || log.innerText.includes("Buscando")) log.innerHTML = "";
+                        const corpo = document.getElementById('log-corpo');
+                        if(corpo.innerText.includes("Processando") || corpo.innerText.includes("Aguardando") || corpo.innerText.includes("Extraindo")) corpo.innerHTML = "";
                         
                         const div = document.createElement('div');
-                        let isFogo = msg.includes("FIRE") || msg.includes("ALARM") || msg.includes("FOGO");
-                        div.className = isFogo ? "linha-fogo" : "linha";
-                        div.innerText = msg;
+                        let mU = msg.toUpperCase();
                         
-                        log.insertBefore(div, log.firstChild);
+                        if(mU.includes("FIRE") || mU.includes("ALARM") || mU.includes("FOGO")) {
+                            div.className = "linha-fogo";
+                        } else if(mU.includes("FAULT") || mU.includes("FALHA") || mU.includes("PROBL")) {
+                            div.className = "linha-falha";
+                        } else {
+                            div.className = "linha";
+                        }
+                        
+                        div.innerText = msg;
+                        corpo.insertBefore(div, corpo.firstChild);
                         ultimo = msg;
                     }
                 });
             }, 1200);
+        }
+
+        function baixarWord() {
+            const conteudo = document.getElementById('log-container').innerHTML;
+            const style = "<style>body{font-family:Arial;}.linha-fogo{color:red;font-weight:bold;}.linha-falha{color:orange;}.linha{color:black;}</style>";
+            const htmlCompleto = "<!DOCTYPE html><html><head><meta charset='utf-8'></head><body>" + style + conteudo + "</body></html>";
+            
+            const convertido = htmlDocx.asBlob(htmlCompleto);
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(convertido);
+            link.download = 'Relatorio_CFSISTEMAS.doc';
+            link.click();
         }
     </script>
 </body>
