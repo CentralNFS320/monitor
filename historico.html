@@ -6,72 +6,61 @@
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; text-align: center; padding: 15px; }
         .topo { background: #0a0a0a; padding: 20px; border: 2px solid #222; border-radius: 12px; margin-bottom: 20px; }
-        input[type="date"] { padding: 10px; border-radius: 5px; background: #222; color: #fff; border: 1px solid #444; }
-        .btn { padding: 12px 20px; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 5px; transition: 0.3s; }
+        .btn { padding: 12px 20px; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 5px; }
+        .btn-recentes { background: #388E3C; }
         .btn-data { background: #0af; }
-        .btn-tudo { background: #388E3C; }
-        .btn-limpar { background: #444; }
+        input[type="date"] { padding: 10px; border-radius: 5px; background: #222; color: #fff; border: 1px solid #444; }
         #log { background: #050505; border: 1px solid #222; height: 500px; overflow-y: auto; text-align: left; padding: 20px; font-family: monospace; font-size: 14px; margin-top: 15px; }
         .linha { border-bottom: 1px solid #111; padding: 5px 0; color: #0f7; }
-        .linha-fogo { color: #f44; font-weight: bold; background: rgba(255,0,0,0.1); padding: 5px; border-left: 4px solid #f44; }
     </style>
 </head>
 <body>
-
     <div class="topo">
-        <h2 style="color:#0af; margin-top:0;">CFSISTEMAS - RASTREADOR</h2>
+        <h2 style="color:#0af; margin-top:0;">RASTREADOR CFSISTEMAS</h2>
+        <button class="btn btn-recentes" onclick="carregarRecentes()">MOSTRAR 50 RECENTES</button>
+        <hr style="border:0; border-top:1px solid #222; margin:15px 0;">
         <input type="date" id="input-data">
-        <button class="btn btn-data" onclick="carregarData()">BUSCAR DATA</button>
-        <button class="btn btn-tudo" onclick="carregarTudo()">CARREGAR TUDO</button>
-        <button class="btn btn-limpar" onclick="limpar()">LIMPAR TELA</button>
-        <br><br>
-        <a href="index.html" style="color:#666; text-decoration:none; font-size:12px;">Voltar ao Painel Home</a>
+        <button class="btn btn-data" onclick="carregarData()">BUSCAR POR DATA</button>
+        <br><br><a href="index.html" style="color:#666; text-decoration:none; font-size:12px;">Voltar ao Painel</a>
     </div>
-
-    <div id="log">Aguardando comando...</div>
+    <div id="log">Clique em um botão para carregar...</div>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        let ultimo = "";
         let rodando = false;
 
-        function carregarData() {
-            const data = document.getElementById('input-data').value;
-            if(!data) return alert("Selecione uma data!");
+        function carregarRecentes() {
             limpar();
-            document.getElementById('log').innerText = "🔍 Buscando dia " + data + "...";
-            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=${data}`);
-            iniciarEscuta();
-        }
-
-        function carregarTudo() {
-            limpar();
-            document.getElementById('log').innerText = "🛰️ Carregando todos os eventos da memória...";
+            document.getElementById('log').innerText = "Carregando últimos 50 eventos...";
             fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V4=1`);
-            iniciarEscuta();
+            escutar();
         }
 
-        function limpar() { document.getElementById('log').innerHTML = ""; ultimo = ""; }
+        function carregarData() {
+            const d = document.getElementById('input-data').value;
+            if(!d) return alert("Selecione a data!");
+            limpar();
+            document.getElementById('log').innerText = "Buscando data: " + d;
+            fetch(`https://blynk.cloud/external/api/update?token=${TOKEN}&V3=${d}`);
+            escutar();
+        }
 
-        function iniciarEscuta() {
-            if (rodando) return;
-            rodando = true;
+        function limpar() { document.getElementById('log').innerHTML = ""; }
+
+        function escutar() {
+            if (rodando) return; rodando = true;
             setInterval(() => {
                 fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V2&_=${Date.now()}`)
                 .then(r => r.text())
-                .then(data => {
-                    let msg = data.replace(/[\[\]"{}]/g, "").replace("V2:", "").trim();
-                    if (msg && msg !== "null" && msg !== ultimo) {
+                .then(t => {
+                    let msg = t.replace(/[\[\]"{}]/g, "").replace("V2:", "").trim();
+                    if(msg && msg !== "null") {
                         const log = document.getElementById('log');
-                        if(log.innerText.includes("Carregando") || log.innerText.includes("Aguardando") || log.innerText.includes("Buscando")) log.innerHTML = "";
-                        
+                        if(log.innerText.includes("Carregando") || log.innerText.includes("Buscando")) log.innerHTML = "";
                         const div = document.createElement('div');
-                        let isFogo = msg.includes("FIRE") || msg.includes("ALARM") || msg.includes("FOGO");
-                        div.className = isFogo ? "linha-fogo" : "linha";
+                        div.className = "linha";
                         div.innerText = msg;
-                        
                         log.insertBefore(div, log.firstChild);
-                        ultimo = msg;
                     }
                 });
             }, 1200);
