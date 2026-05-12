@@ -1,109 +1,104 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>CF SISTEMAS - MONITOR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CF SISTEMAS - Monitor Real Time</title>
     <style>
-        body { 
-            background: #000; 
-            color: #fff; 
-            font-family: sans-serif; 
-            margin: 0; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .painel {
             text-align: center;
+            padding: 40px;
+            border-radius: 15px;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            transition: background-color 0.5s ease;
+            background-color: #222222; /* Cor inicial neutra */
         }
-        .container { width: 90%; max-width: 500px; }
-        
-        /* QUADRO DE STATUS - FIXO */
-        .card {
-            background: #111;
-            padding: 50px 20px;
-            border-radius: 20px;
-            border: 2px solid #333;
-            transition: 0.3s;
+        h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #0af; /* Azul padrão CF SISTEMAS no título */
         }
-
-        #status-texto { 
-            font-size: 35px; 
-            font-weight: bold; 
-            text-transform: uppercase;
+        .status-texto {
+            font-size: 22px;
+            font-weight: bold;
+            word-wrap: break-word;
         }
-
-        /* --- MODO ALARME (LANTERNA NO QUADRO) --- */
-        .alarme-on {
-            background: #f00 !important; /* Fundo Vermelho */
-            border-color: #fff !important;
-            animation: flash 0.6s infinite; /* Pulso de luz rápido */
-        }
-        
-        .alarme-on #status-texto {
-            color: #fff !important; /* Escrita Branca no fundo vermelho */
-            text-shadow: 2px 2px 10px #000;
-        }
-
-        @keyframes flash {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
-        }
-
-        /* CORES DE STATUS */
-        .cor-normal { color: #0f7; }
-        .cor-falha { color: #ff0; }
-
         .btn-link {
-            display: inline-block; margin-top: 30px; padding: 10px 20px;
-            color: #0af; border: 1px solid #0af; text-decoration: none; border-radius: 5px;
+            display: inline-block;
+            margin-top: 25px;
+            color: #aaa;
+            text-decoration: none;
+            font-size: 14px;
+            border: 1px solid #444;
+            padding: 8px 15px;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2 style="color:#0af; margin-bottom:20px;">CF SISTEMAS</h2>
-        
-        <div id="painel" class="card">
-            <div id="status-texto">CARREGANDO...</div>
-        </div>
-
-        <a href="historico.html" class="btn-link">📜 RASTREADOR DE EVENTOS</a>
+    <div class="painel" id="painel-status">
+        <h1 id="titulo-sistema">CF SISTEMAS</h1>
+        <div class="status-texto" id="texto-notifier">Sincronizando com a central...</div>
+        <a href="historico.html" class="btn-link">📜 Abrir Rastreador de Eventos</a>
     </div>
 
     <script>
-        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
+        const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa"; 
 
-        function atualizar() {
-            fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${Date.now()}`)
-                .then(r => r.text())
-                .then(data => {
-                    let msg = data.replace(/[\[\]"{}]/g, "").replace("V1:", "").trim();
-                    if (!msg || msg === "null") msg = "SISTEMA NORMAL";
-
-                    const texto = document.getElementById('status-texto');
-                    const painel = document.getElementById('painel');
-                    texto.innerText = msg;
-
-                    let m = msg.toUpperCase();
-
-                    // VOLTANDO AO PADRÃO INICIAL
-                    if (m.includes("FIRE") || m.includes("ALARM") || m.includes("FOGO") || m.includes("INCENDIO")) {
-                        painel.className = "card alarme-on";
-                        texto.className = "";
-                    } 
-                    else {
-                        painel.className = "card"; // Volta ao quadro normal parado
-                        if (m.includes("NORMAL")) {
-                            texto.className = "cor-normal";
-                        } else {
-                            texto.className = "cor-falha";
-                        }
-                    }
-                });
+        function obterCorPorMensagem(mensagem) {
+            let mU = mensagem.toUpperCase();
+            
+            // 1. Vermelho: Fogo ou Alarmes
+            if (mU.includes("FIRE") || mU.includes("ALARM") || mU.includes("FOGO") || mU.includes("INCENDIO")) {
+                return "#D32F2F"; 
+            }
+            // 2. Amarelo: Falhas ou Avarias
+            if (mU.includes("FAULT") || mU.includes("FALHA") || mU.includes("TROUBLE") || mU.includes("AVARIA") || mU.includes("DESL")) {
+                return "#FBC02D"; 
+            }
+            // 3. Verde: Normal ou Reset
+            if (mU.includes("NORMAL") || mU.includes("RESET") || mU.includes("RESTORE")) {
+                return "#388E3C"; 
+            }
+            
+            return "#222222"; // Neutro
         }
-        setInterval(atualizar, 1500);
+
+        async function atualizar() {
+            const url = `https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${Date.now()}`;
+            
+            try {
+                const response = await fetch(url);
+                const textoPuro = await response.text();
+                
+                const divTexto = document.getElementById("texto-notifier");
+                const divPainel = document.getElementById("painel-status");
+
+                let msg = textoPuro.replace(/[\[\]"{}]/g, "").replace("V1:", "").trim();
+                if(!msg || msg === "null") msg = "SISTEMA NORMAL";
+
+                divTexto.innerText = msg;
+                divPainel.style.backgroundColor = obterCorPorMensagem(msg);
+
+            } catch (error) {
+                console.error("Erro:", error);
+            }
+        }
+
+        setInterval(atualizar, 2000);
         atualizar();
     </script>
 </body>
