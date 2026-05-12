@@ -8,7 +8,7 @@
         /* Estilo Base - Modo Escuro */
         body { 
             font-family: 'Segoe UI', Arial, sans-serif; 
-            background: #0a0a0a; 
+            background: #000; 
             color: #fff; 
             margin: 0; 
             display: flex; 
@@ -16,72 +16,75 @@
             align-items: center; 
             justify-content: center; 
             height: 100vh;
-            transition: background 0.5s; /* Transição suave para o vermelho */
         }
 
         .container { text-align: center; width: 90%; max-width: 600px; }
 
+        /* Estilo do Quadro (Card) - Modo Normal */
         .card {
-            background: #151515;
-            padding: 40px 20px;
-            border-radius: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            background: #111;
+            padding: 50px 30px;
+            border-radius: 30px;
             border: 2px solid #333;
-            transition: all 0.5s;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            transition: all 0.4s ease; /* Suavidade na mudança */
         }
 
         #status-texto { 
-            font-size: 28px; 
+            font-size: 30px; 
             font-weight: bold; 
             text-transform: uppercase; 
-            margin: 20px 0;
             line-height: 1.3;
+            transition: color 0.4s ease;
         }
 
-        /* --- MODO LANTERNA VERMELHA (ALARME) --- */
-        body.alarme-ativo { 
-            background: #900 !important; /* Vermelho forte no fundo */
-            animation: lanterna 1s infinite;
+        /* --- MODO QUADRO LANTERNA (ALARME/FOGO) --- */
+        
+        /* 1. O Quadro fica pulsante e luminoso */
+        .card.alarme-ativo {
+            background: #f00 !important; /* Quadro vermelho vivo */
+            border-color: #fff; /* Borda branca para destaque */
+            box-shadow: 0 0 60px #f00; /* Brilho (Luminosidade) vermelho ao redor */
+            animation: pulse-card 1s infinite;
         }
 
-        .alarme-ativo .card {
-            background: #f00 !important; /* Card vermelho vivo */
-            border-color: #fff;
-            box-shadow: 0 0 50px #f00;
+        /* 2. A Escrita dentro do quadro fica vermelha luminosa */
+        .card.alarme-ativo #status-texto {
+            color: #fff !important; /* Texto branco para leitura */
+            text-shadow: 0 0 15px #fff, 0 0 5px #fff; /* Brilho neon branco para destaque extremo */
         }
 
-        .alarme-ativo #status-texto {
-            color: #fff !important;
-            text-shadow: 2px 2px 5px #000;
-        }
-
-        @keyframes lanterna {
-            0% { background: #900; }
-            50% { background: #f00; }
-            100% { background: #900; }
+        /* Animação de pulso do quadro lanterna */
+        @keyframes pulse-card {
+            0% { transform: scale(1); box-shadow: 0 0 60px #f00; }
+            50% { transform: scale(1.03); box-shadow: 0 0 80px #f00; }
+            100% { transform: scale(1); box-shadow: 0 0 60px #f00; }
         }
 
         /* --- MODO NORMAL --- */
         .normal { color: #0f7; }
         
         .btn {
-            display: inline-block; margin-top: 30px; padding: 12px 24px;
-            background: #222; color: #0af; border: 1px solid #0af;
-            text-decoration: none; border-radius: 10px; font-weight: bold;
+            display: inline-block; margin-top: 40px; padding: 15px 30px;
+            background: #1a1a1a; color: #0af; border: 2px solid #0af;
+            text-decoration: none; border-radius: 12px; font-weight: bold;
+            transition: 0.3s;
         }
+        .btn:hover { background: #0af; color: #000; box-shadow: 0 0 20px #0af; }
+
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1 style="color:#0af; margin-bottom: 5px;">CF SISTEMAS</h1>
-        <p style="color:#666; margin-bottom: 30px;">MONITORAMENTO NOTIFIER NFS-320</p>
+        <h1 style="color:#0af; margin-bottom: 10px; font-size: 24px;">CF SISTEMAS</h1>
+        <p style="color:#444; margin-bottom: 40px; font-size: 14px;">MONITORAMENTO NOTIFIER NFS-320</p>
 
         <div id="painel-card" class="card">
             <div id="status-texto">SINCRONIZANDO...</div>
         </div>
 
-        <a href="historico.html" class="btn">📜 ABRIR RASTREADOR / BUSCA</a>
+        <a href="historico.html" class="btn">📜 ABRIR RASTREADOR / BUSCA LOCAL</a>
     </div>
 
     <script>
@@ -95,26 +98,29 @@
                     if (!msg || msg === "null" || msg === "") msg = "SISTEMA NORMAL";
 
                     const texto = document.getElementById('status-texto');
-                    const corpo = document.body;
+                    const quadro = document.getElementById('painel-card');
                     texto.innerText = msg;
 
                     let m = msg.toUpperCase();
 
-                    // Lógica para Ativar Lanterna Vermelha
+                    // Lógica para Ativar o Quadro Lanterna
                     if (m.includes("FIRE") || m.includes("ALARM") || m.includes("FOGO") || m.includes("INCENDIO")) {
-                        corpo.className = "alarme-ativo";
+                        quadro.classList.add("alarme-ativo");
+                        texto.className = ""; // Limpa classes de cor
                     } 
                     else {
-                        corpo.className = ""; // Remove lanterna
+                        quadro.classList.remove("alarme-ativo"); // Remove lanterna do quadro
+                        
                         if (m.includes("NORMAL")) {
-                            texto.className = "normal";
+                            texto.className = "normal"; // Cor Verde
                         } else {
-                            texto.style.color = "#ff0"; // Amarelo para falhas (PROBL, LPR, etc)
+                            texto.style.color = "#ff0"; // Cor Amarela para Falhas
                         }
                     }
                 });
         }
 
+        // Atualização a cada 1.5 segundos
         setInterval(atualizar, 1500);
         atualizar();
     </script>
