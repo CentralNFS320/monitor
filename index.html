@@ -3,61 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Real Time</title>
+    <title>CF SISTEMAS - Home</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; text-align: center; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; text-align: center; margin: 0; padding: 20px; }
         .card {
             background: #151515; padding: 50px 20px; border-radius: 20px; margin: 30px auto;
-            max-width: 500px; border-top: 10px solid #0f7; transition: 0.3s;
+            max-width: 500px; border-top: 10px solid #0f7; transition: 0.5s;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        #status-texto { font-size: 22px; font-weight: bold; text-transform: uppercase; }
-        .alarme { border-top-color: #f00 !important; color: #f00 !important; }
-        .falha { border-top-color: #ff0 !important; color: #ff0 !important; }
+        #status-texto { font-size: 22px; font-weight: bold; text-transform: uppercase; line-height: 1.4; }
+        .alarme { border-top-color: #f00 !important; color: #f00; animation: flash 1s infinite; }
+        .falha { border-top-color: #ff0 !important; color: #ff0; }
+        @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        .btn { display: inline-block; padding: 15px 30px; background: #222; color: #0af; text-decoration: none; border-radius: 10px; border: 1px solid #333; font-weight: bold; margin-top: 20px; }
     </style>
 </head>
 <body>
     <h1 style="color:#0af">CF SISTEMAS</h1>
     <div id="cartao" class="card">
-        <div id="status-texto">CONECTANDO...</div>
+        <div id="status-texto">SINCRONIZANDO...</div>
     </div>
+    <a href="historico.html" class="btn">📜 VER HISTÓRICO COMPLETO</a>
 
     <script>
         const TOKEN = "aLLr6CClMLHVuL_8TmmF6EcG8vZQ5aBa";
-        let ultimaMsg = "";
 
         function atualizar() {
-            // Buscamos o V1 (Status da Central)
             fetch(`https://blynk.cloud/external/api/get?token=${TOKEN}&V1&_=${Date.now()}`)
                 .then(r => r.text())
                 .then(data => {
                     let msg = data.replace(/[\[\]"{}]/g, "").replace("V1:", "").trim();
                     if (!msg || msg === "null" || msg === "") msg = "SISTEMA NORMAL";
-                    
-                    if (msg === ultimaMsg) return; // Não faz nada se a msg for a mesma
-                    ultimaMsg = msg;
 
                     const txt = document.getElementById('status-texto');
                     const card = document.getElementById('cartao');
                     txt.innerText = msg;
-
                     let m = msg.toUpperCase();
-                    card.className = "card";
 
-                    // Detecção de ALARME
-                    if (m.includes("FIRE") || m.includes("ALARM") || m.includes("FOGO")) {
+                    card.className = "card";
+                    txt.style.color = "#fff";
+
+                    if (m.includes("FIRE") || m.includes("ALARM") || m.includes("FOGO") || m.includes("INCENDIO")) {
                         card.classList.add("alarme");
                     }
-                    // Detecção de FALHAS (Incluindo PROBL, LPR, ABERTO que você viu)
                     else if (m.includes("PROBL") || m.includes("ABERTO") || m.includes("LPR") || m.includes("FALHA") || m.includes("FAULT")) {
                         card.classList.add("falha");
-                    } else {
+                    }
+                    else {
                         txt.style.color = "#0f7";
+                        card.style.borderTopColor = "#0f7";
                     }
                 });
         }
-        // Atualiza a cada 1 segundo para pegar a alternância de mensagens da central
-        setInterval(atualizar, 1000);
+        setInterval(atualizar, 1500);
         atualizar();
     </script>
 </body>
