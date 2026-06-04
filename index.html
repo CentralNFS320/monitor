@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Monitoramento Remoto</title>
     
-    <!-- CSS do Calendário Estático -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
 
@@ -30,34 +29,6 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             transition: border-color 0.5s ease;
         }
-        /* Tela de Login Industrial (CF SISTEMAS) */
-        .login-container {
-            display: block;
-            margin-top: 50px;
-        }
-        .login-input {
-            width: 85%;
-            padding: 12px;
-            margin: 10px 0;
-            border-radius: 5px;
-            border: 1px solid #444;
-            background: #000;
-            color: #fff;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        .checkbox-container {
-            text-align: left;
-            width: 85%;
-            margin: 0 auto 15px auto;
-            font-size: 14px;
-            color: #aaa;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            cursor: pointer;
-            user-select: none;
-        }
         .btn {
             display: inline-block;
             margin-top: 15px;
@@ -70,22 +41,6 @@
             cursor: pointer;
             user-select: none;
         }
-        .btn-busca {
-            background: #0af;
-            color: #fff;
-            padding: 12px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 14px;
-            width: 100%;
-            margin-top: 10px;
-        }
-        /* Painel Principal Inicialmente Escondido */
-        .painel-principal {
-            display: none;
-        }
         .filtro-container {
             margin-top: 15px;
             background: #222;
@@ -97,6 +52,18 @@
         .flatpickr-calendar.inline {
             margin: 10px auto !important;
             display: block !important;
+        }
+        .btn-busca {
+            background: #0af;
+            color: #fff;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            width: 100%;
+            margin-top: 10px;
         }
         .log-container {
             background: #000;
@@ -121,62 +88,35 @@
 </head>
 <body>
 
-    <!-- 1. TELA DE LOGIN SEGURO -->
-    <div class="card login-container" id="telaLogin">
+    <div class="card" id="mainCard">
         <h1>CF SISTEMAS</h1>
-        <h3>Acesso Restrito</h3>
-        <p style="color: #aaa; font-size: 14px;">Insira as credenciais para acessar o monitoramento.</p>
-        <input type="email" id="loginEmail" class="login-input" placeholder="E-mail do Administrador">
-        <input type="password" id="loginSenha" class="login-input" placeholder="Senha de Acesso">
+        <h3>Monitoramento NFS-320 (Remoto)</h3>
         
-        <!-- Opção de Mostrar/Ocultar Senha -->
-        <div class="checkbox-container">
-            <input type="checkbox" id="checkSenha" onclick="mostrarOcultarSenha()">
-            <label for="checkSenha" style="cursor:pointer;">👁️ Mostrar Senha</label>
+        <div id="ev" style="font-size:18px; color:#2ecc71; margin:20px 0; min-height:50px; font-weight:bold;">
+            Conectando ao Firebase...
+        </div>
+        
+        <p style="color:#888; font-size:12px;">Status: Monitoramento Global Ativo</p>
+        <hr>
+        
+        <div class="btn" id="btnLog" onclick="toggleHistorico()">📜 VER HISTÓRICO REMOTO</div>
+        
+        <div class="filtro-container" id="filtroContainer">
+            <label style="font-size: 14px; color: #aaa; display:block; margin-bottom:5px;">📅 Selecione a Data e Hora desejada:</label>
+            
+            <input type="text" id="buscaData" style="display:none;">
+            
+            <button class="btn-busca" onclick="filtrarPorDataHora()">🔍 Buscar Eventos</button>
+            <button class="btn-busca" style="background:#27ae60;" onclick="limparFiltro()">📋 VER TODO O HISTÓRICO</button>
+            <button class="btn-busca" style="background:#555; margin-top: 5px;" onclick="minimizarPainel()">❌ FECHAR OPÇÕES DE BUSCA</button>
         </div>
 
-        <button class="btn-busca" onclick="realizarLogin()">🔓 Entrar no Sistema</button>
-        <div id="erroLogin" style="color: #ff4757; margin-top: 10px; font-size: 14px; font-weight: bold;"></div>
+        <div class="log-container" id="logContainer">Carregando histórico da nuvem...</div>
     </div>
 
-    <!-- 2. PAINEL DE MONITORAMENTO (SÓ ABRE SE LOGADO) -->
-    <div class="painel-principal" id="painelMonitor">
-        <div class="card" id="mainCard">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #888;">CF SISTEMAS</span>
-                <button style="background: none; border: 1px solid #ff4757; color: #ff4757; border-radius: 3px; cursor: pointer; font-size: 11px;" onclick="realizarLogout()">Sair</button>
-            </div>
-            <h1 style="margin-top: 10px;">CF SISTEMAS</h1>
-            <h3>Monitoramento NFS-320 (Remoto)</h3>
-            
-            <div id="ev" style="font-size:18px; color:#2ecc71; margin:20px 0; min-height:50px; font-weight:bold;">
-                Carregando dados protegidos...
-            </div>
-            
-            <p style="color:#888; font-size:12px;">Status: Conexão Criptografada Ativa</p>
-            <hr>
-            
-            <div class="btn" id="btnLog" onclick="toggleHistorico()">📜 VER HISTÓRICO REMOTO</div>
-            
-            <div class="filtro-container" id="filtroContainer">
-                <label style="font-size: 14px; color: #aaa; display:block; margin-bottom:5px;">📅 Selecione a Data e Hora desejada:</label>
-                <input type="text" id="buscaData" style="display:none;">
-                
-                <button class="btn-busca" onclick="filtrarPorDataHora()">🔍 Buscar Eventos</button>
-                <button class="btn-busca" style="background:#27ae60;" onclick="limparFiltro()">📋 VER TODO O HISTÓRICO</button>
-                <button class="btn-busca" style="background:#555; margin-top: 5px;" onclick="minimizarPainel()">❌ FECHAR OPÇÕES DE BUSCA</button>
-            </div>
-
-            <div class="log-container" id="logContainer">Carregando histórico seguro...</div>
-        </div>
-    </div>
-
-    <!-- Scripts Firebase (Inclusão do módulo de Auth) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     
-    <!-- Scripts Calendário -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
 
@@ -193,74 +133,23 @@
 
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        const auth = firebase.auth();
 
-        const telaLogin = document.getElementById('telaLogin');
-        const painelMonitor = document.getElementById('painelMonitor');
         const card = document.getElementById('mainCard');
         const evDiv = document.getElementById('ev');
         const logContainer = document.getElementById('logContainer');
         const filtroContainer = document.getElementById('filtroContainer');
         
         let todosOsLogs = []; 
-        let fp;
+        let fp; // Guardará a instância do calendário
 
-        // Função para alternar o tipo do campo de senha (Texto ou Bolinhas)
-        function mostrarOcultarSenha() {
-            const campoSenha = document.getElementById('loginSenha');
-            if (campoSenha.type === "password") {
-                campoSenha.type = "text";
-            } else {
-                campoSenha.type = "password";
-            }
-        }
-
-        function realizarLogin() {
-            const email = document.getElementById('loginEmail').value;
-            const senha = document.getElementById('loginSenha').value;
-            const divErro = document.getElementById('erroLogin');
-            divErro.innerText = "Verificando...";
-
-            auth.signInWithEmailAndPassword(email, senha)
-                .then(() => { divErro.innerText = ""; })
-                .catch((error) => {
-                    divErro.innerText = "Acesso Negado! Verifique o e-mail e senha.";
-                    console.error(error);
-                });
-        }
-
-        function realizarLogout() { auth.signOut(); }
-
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                telaLogin.style.display = "none";
-                painelMonitor.style.display = "block";
-                ativarMonitoramento();
-            } else {
-                telaLogin.style.display = "block";
-                painelMonitor.style.display = "none";
-                desativarMonitoramento();
-            }
+        // Inicializa o Flatpickr unificando Data + Relógio de Hora/Minuto na mesma tela
+        fp = flatpickr("#buscaData", {
+            inline: true,
+            enableTime: true,
+            time_24hr: true,
+            dateFormat: "d/m/Y H:i",
+            locale: "pt"
         });
-
-        function activarMonitoramento() {
-            if(!fp) {
-                fp = flatpickr("#buscaData", {
-                    inline: true,
-                    enableTime: true,
-                    time_24hr: true,
-                    dateFormat: "d/m/Y H:i",
-                    locale: "pt"
-                });
-            }
-            database.ref('/central/status').on('value', atualizarStatus);
-            database.ref('/central/historico').limitToLast(800).on('value', carregarHistorico);
-        }
-
-        function desativarMonitoramento() {
-            database.ref('/central/status').off();
-            database.ref('/central/historico').off();
-        }
 
         function formatarLinhaNotifier(linha) {
             const padrao = /(\d{2}:\d{2}[AP])\s+(\d{6})/;
@@ -269,15 +158,18 @@
             if (match) {
                 const horaOriginal = match[1]; 
                 const dataOriginal = match[2]; 
+
                 const mes = dataOriginal.substring(0, 2);
                 const dia = dataOriginal.substring(2, 4);
                 const ano = "20" + dataOriginal.substring(4, 6);
-                return linha.replace(padrao, `${horaOriginal} - ${dia}/${mes}/${ano}`);
+
+                const dataFormatada = `${dia}/${mes}/${ano}`;
+                return linha.replace(padrao, `${horaOriginal} - ${dataFormatada}`);
             }
             return linha; 
         }
 
-        function atualizarStatus(snapshot) {
+        database.ref('/central/status').on('value', (snapshot) => {
             const msg = snapshot.val() || "Aguardando Notifier...";
             evDiv.innerText = formatarLinhaNotifier(msg);
             const msgMaiuscula = msg.toUpperCase();
@@ -295,37 +187,48 @@
                 evDiv.style.animation = "none";
                 card.style.borderTopColor = "#f1c40f";
             }
-        }
+        });
 
-        function carregarHistorico(snapshot) {
+        database.ref('/central/historico').limitToLast(800).on('value', (snapshot) => {
             todosOsLogs = [];
             snapshot.forEach((childSnapshot) => {
                 const data = childSnapshot.val();
-                if (data && data.mensagem) { todosOsLogs.push("> " + data.mensagem); }
+                if (data && data.mensagem) {
+                    todosOsLogs.push("> " + data.mensagem);
+                }
             });
             renderizarLogs(todosOsLogs);
-        }
+        });
 
         function renderizarLogs(lista) {
             let html = "";
-            lista.forEach(linha => { html += formatarLinhaNotifier(linha) + "\n"; });
+            lista.forEach(linha => {
+                html += formatarLinhaNotifier(linha) + "\n";
+            });
             logContainer.innerText = html || "Nenhum evento encontrado para os critérios selecionados.";
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
+        // Realiza o filtro inteligente cruzando Data (MMDDAA) e Hora da Notifier
         function filtrarPorDataHora() {
-            const stringCompleta = document.getElementById('buscaData').value;
-            if (!stringCompleta) { alert("Por favor, selecione uma data no calendário!"); return; }
+            const stringCompleta = document.getElementById('buscaData').value; // Retorna "DD/MM/AAAA HH:MM" ou apenas "DD/MM/AAAA"
 
+            if (!stringCompleta) {
+                alert("Por favor, selecione uma data no calendário!");
+                return;
+            }
+
+            // Separa os dados digitados/clicados
             const partesEspaco = stringCompleta.split(' ');
-            const dataParte = partesEspaco[0]; 
-            const horaParte = partesEspaco[1] ? partesEspaco[1] : ""; 
+            const dataParte = partesEspaco[0]; // "DD/MM/AAAA"
+            const horaParte = partesEspaco[1] ? partesEspaco[1] : ""; // "HH:MM"
 
             const partesData = dataParte.split('/');
             const dia = partesData[0];  
             const mes = partesData[1];  
             const anoCurto = partesData[2].substring(2, 4); 
-            const formatoDataNotifier = `${mes}${dia}${anoCurto}`; 
+
+            const formatoDataNotifier = `${mes}${dia}${anoCurto}`; // Ex: "060426"
 
             const logsFiltrados = todosOsLogs.filter(linha => {
                 const linhaUpper = linha.toUpperCase();
@@ -333,20 +236,34 @@
 
                 if (temPadraoNotifier) {
                     const contemData = linhaUpper.includes(formatoDataNotifier);
+                    
+                    // Se o usuário mexeu na hora, filtra por ela também (independente de ser AM/PM ou formato de 24h)
                     let contemHora = true;
-                    if (horaParte) { contemHora = linhaUpper.includes(horaParte); }
+                    if (horaParte) {
+                        // Limpa os dois pontos da hora para buscar de forma maleável se necessário
+                        contemHora = linhaUpper.includes(horaParte);
+                    }
                     return contemData && contemHora;
                 } else {
+                    // Logs normais de teste aparecem no dia corrente
                     const hoje = new Date();
                     const dataHojeStr = `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
                     return dataParte === dataHojeStr;
                 }
             });
+
             renderizarLogs(logsFiltrados);
         }
 
-        function limparFiltro() { if(fp) fp.clear(); renderizarLogs(todosOsLogs); }
-        function minimizarPainel() { filtroContainer.style.display = "none"; document.getElementById('btnLog').innerText = "📜 VER HISTÓRICO REMOTO"; }
+        function limparFiltro() {
+            if(fp) fp.clear();
+            renderizarLogs(todosOsLogs);
+        }
+
+        function minimizarPainel() {
+            filtroContainer.style.display = "none";
+            document.getElementById('btnLog').innerText = "📜 VER HISTÓRICO REMOTO";
+        }
 
         function toggleHistorico() {
             if (logContainer.style.display === "block" && filtroContainer.style.display === "block") {
@@ -360,7 +277,6 @@
                 logContainer.scrollTop = logContainer.scrollHeight;
             }
         }
-        document.getElementById('loginSenha').addEventListener('keypress', function (e) { if (e.key === 'Enter') { realizarLogin(); } });
     </script>
 </body>
 </html>
