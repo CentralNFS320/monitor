@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Monitoramento Remoto</title>
     
+    <!-- CSS do Calendário Estático -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
 
@@ -44,6 +45,18 @@
             color: #fff;
             font-size: 16px;
             box-sizing: border-box;
+        }
+        .checkbox-container {
+            text-align: left;
+            width: 85%;
+            margin: 0 auto 15px auto;
+            font-size: 14px;
+            color: #aaa;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            user-select: none;
         }
         .btn {
             display: inline-block;
@@ -108,16 +121,25 @@
 </head>
 <body>
 
+    <!-- 1. TELA DE LOGIN SEGURO -->
     <div class="card login-container" id="telaLogin">
         <h1>CF SISTEMAS</h1>
         <h3>Acesso Restrito</h3>
         <p style="color: #aaa; font-size: 14px;">Insira as credenciais para acessar o monitoramento.</p>
         <input type="email" id="loginEmail" class="login-input" placeholder="E-mail do Administrador">
         <input type="password" id="loginSenha" class="login-input" placeholder="Senha de Acesso">
+        
+        <!-- Opção de Mostrar/Ocultar Senha -->
+        <div class="checkbox-container">
+            <input type="checkbox" id="checkSenha" onclick="mostrarOcultarSenha()">
+            <label for="checkSenha" style="cursor:pointer;">👁️ Mostrar Senha</label>
+        </div>
+
         <button class="btn-busca" onclick="realizarLogin()">🔓 Entrar no Sistema</button>
         <div id="erroLogin" style="color: #ff4757; margin-top: 10px; font-size: 14px; font-weight: bold;"></div>
     </div>
 
+    <!-- 2. PAINEL DE MONITORAMENTO (SÓ ABRE SE LOGADO) -->
     <div class="painel-principal" id="painelMonitor">
         <div class="card" id="mainCard">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -149,9 +171,196 @@
         </div>
     </div>
 
+    <!-- Scripts Firebase (Inclusão do módulo de Auth) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     
+    <!-- Scripts Calendário -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDxqeZodkk0PaTeVvsQZCY410ymNca2xQE",
+            authDomain: "munitor-de-alarme.firebaseapp.com",
+            databaseURL: "https://munitor-de-alarme-default-rtdb.firebaseio.com",
+            projectId: "munitor-de-alarme",
+            storageBucket: "munitor-de-alarme.firebasestorage.app",
+            messagingSenderId: "110591997556",
+            appId: "1:110591997556:web:98493257f6b77d691c0321"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
+
+        const telaLogin = document.getElementById('telaLogin');
+        const painelMonitor = document.getElementById('painelMonitor');
+        const card = document.getElementById('mainCard');
+        const evDiv = document.getElementById('ev');
+        const logContainer = document.getElementById('logContainer');
+        const filtroContainer = document.getElementById('filtroContainer');
+        
+        let todosOsLogs = []; 
+        let fp;
+
+        // Função para alternar o tipo do campo de senha (Texto ou Bolinhas)
+        function mostrarOcultarSenha() {
+            const campoSenha = document.getElementById('loginSenha');
+            if (campoSenha.type === "password") {
+                campoSenha.type = "text";
+            } else {
+                campoSenha.type = "password";
+            }
+        }
+
+        function realizarLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const senha = document.getElementById('loginSenha').value;
+            const divErro = document.getElementById('erroLogin');
+            divErro.innerText = "Verificando...";
+
+            auth.signInWithEmailAndPassword(email, senha)
+                .then(() => { divErro.innerText = ""; })
+                .catch((error) => {
+                    divErro.innerText = "Acesso Negado! Verifique o e-mail e senha.";
+                    console.error(error);
+                });
+        }
+
+        function realizarLogout() { auth.signOut(); }
+
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                telaLogin.style.display = "none";
+                painelMonitor.style.display = "block";
+                ativarMonitoramento();
+            } else {
+                telaLogin.style.display = "block";
+                painelMonitor.style.display = "none";
+                desativarMonitoramento();
+            }
+        });
+
+        function activarMonitoramento() {
+            if(!fp) {
+                fp = flatpickr("#buscaData", {
+                    inline: true,
+                    enableTime: true,
+                    time_24hr: true,
+                    dateFormat: "d/m/Y H:i",
+                    locale: "pt"
+                });
+            }
+            database.ref('/central/status').on('value', atualizarStatus);
+            database.ref('/central/historico').limitToLast(800).on('value', carregarHistorico);
+        }
+
+        function desativarMonitoramento() {
+            database.ref('/central/status').off();
+            database.ref('/central/historico').off();
+        }
+
+        function formatarLinhaNotifier(linha) {
+            const padrao = /(\d{2}:\d{2}[AP])\s+(\d{6})/;
+            const match = linha.match(padrao);
+
+            if (match) {
+                const horaOriginal = match[1]; 
+                const dataOriginal = match[2]; 
+                const mes = dataOriginal.substring(0, 2);
+                const dia = dataOriginal.substring(2, 4);
+                const ano = "20" + dataOriginal.substring(4, 6);
+                return linha.replace(padrao, `${horaOriginal} - ${dia}/${mes}/${ano}`);
+            }
+            return linha; 
+        }
+
+        function atualizarStatus(snapshot) {
+            const msg = snapshot.val() || "Aguardando Notifier...";
+            evDiv.innerText = formatarLinhaNotifier(msg);
+            const msgMaiuscula = msg.toUpperCase();
+
+            if (msgMaiuscula.includes("FOGO") || msgMaiuscula.includes("INCENDIO") || msgMaiuscula.includes("ALARME") || msgMaiuscula.includes("ALARM")) {
+                evDiv.style.color = "#ff0000";
+                evDiv.style.animation = "blink 1s infinite";
+                card.style.borderTopColor = "#ff0000";
+            } else if (msgMaiuscula.includes("NORMAL") || msgMaiuscula.includes("RESET") || msgMaiuscula.includes("SISTEMA OK") || msgMaiuscula.includes("AGUARDANDO")) {
+                evDiv.style.color = "#2ecc71";
+                evDiv.style.animation = "none";
+                card.style.borderTopColor = "#2ecc71";
+            } else {
+                evDiv.style.color = "#f1c40f";
+                evDiv.style.animation = "none";
+                card.style.borderTopColor = "#f1c40f";
+            }
+        }
+
+        function carregarHistorico(snapshot) {
+            todosOsLogs = [];
+            snapshot.forEach((childSnapshot) => {
+                const data = childSnapshot.val();
+                if (data && data.mensagem) { todosOsLogs.push("> " + data.mensagem); }
+            });
+            renderizarLogs(todosOsLogs);
+        }
+
+        function renderizarLogs(lista) {
+            let html = "";
+            lista.forEach(linha => { html += formatarLinhaNotifier(linha) + "\n"; });
+            logContainer.innerText = html || "Nenhum evento encontrado para os critérios selecionados.";
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function filtrarPorDataHora() {
+            const stringCompleta = document.getElementById('buscaData').value;
+            if (!stringCompleta) { alert("Por favor, selecione uma data no calendário!"); return; }
+
+            const partesEspaco = stringCompleta.split(' ');
+            const dataParte = partesEspaco[0]; 
+            const horaParte = partesEspaco[1] ? partesEspaco[1] : ""; 
+
+            const partesData = dataParte.split('/');
+            const dia = partesData[0];  
+            const mes = partesData[1];  
+            const anoCurto = partesData[2].substring(2, 4); 
+            const formatoDataNotifier = `${mes}${dia}${anoCurto}`; 
+
+            const logsFiltrados = todosOsLogs.filter(linha => {
+                const linhaUpper = linha.toUpperCase();
+                const temPadraoNotifier = /(\d{2}:\d{2}[AP])\s+(\d{6})/.test(linhaUpper);
+
+                if (temPadraoNotifier) {
+                    const contemData = linhaUpper.includes(formatoDataNotifier);
+                    let contemHora = true;
+                    if (horaParte) { contemHora = linhaUpper.includes(horaParte); }
+                    return contemData && contemHora;
+                } else {
+                    const hoje = new Date();
+                    const dataHojeStr = `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
+                    return dataParte === dataHojeStr;
+                }
+            });
+            renderizarLogs(logsFiltrados);
+        }
+
+        function limparFiltro() { if(fp) fp.clear(); renderizarLogs(todosOsLogs); }
+        function minimizarPainel() { filtroContainer.style.display = "none"; document.getElementById('btnLog').innerText = "📜 VER HISTÓRICO REMOTO"; }
+
+        function toggleHistorico() {
+            if (logContainer.style.display === "block" && filtroContainer.style.display === "block") {
+                logContainer.style.display = "none";
+                filtroContainer.style.display = "none";
+                document.getElementById('btnLog').innerText = "📜 VER HISTÓRICO REMOTO";
+            } else {
+                logContainer.style.display = "block";
+                filtroContainer.style.display = "block";
+                document.getElementById('btnLog').innerText = "⬅️ FECHAR HISTÓRICO";
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+        }
+        document.getElementById('loginSenha').addEventListener('keypress', function (e) { if (e.key === 'Enter') { realizarLogin(); } });
+    </script>
+</body>
+</html>
