@@ -35,6 +35,7 @@
             padding: 10px 20px;
             border-radius: 5px;
             cursor: pointer;
+            user-select: none;
         }
         .log-container {
             background: #000;
@@ -47,7 +48,8 @@
             font-family: monospace;
             color: #0f0;
             margin-top: 15px;
-            display: none;
+            display: none; /* Inicia fechado */
+            border-radius: 5px;
         }
         @keyframes blink {
             0% { opacity: 1; }
@@ -77,7 +79,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
     <script>
-        // 2. CORRIGIDO: Inserido as suas credenciais de produção reais extraídas do console
+        // Configurações do seu banco de dados Realtime Database
         const firebaseConfig = {
             apiKey: "AIzaSyDxqeZodkk0PaTeVvsQZCY410ymNca2xQE",
             authDomain: "munitor-de-alarme.firebaseapp.com",
@@ -88,7 +90,7 @@
             appId: "1:110591997556:web:98493257f6b77d691c0321"
         };
 
-        // Inicialização do banco
+        // Inicialização do Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
@@ -96,32 +98,40 @@
         const evDiv = document.getElementById('ev');
         const logContainer = document.getElementById('logContainer');
 
-        // Escuta o status atual modificado pelo ESP32
+        // 1. FILTRO DINÂMICO DE CORES POR EVENTO (FOGO/ALARMES, FALHAS E NORMALIZAÇÃO)
         database.ref('/central/status').on('value', (snapshot) => {
             const msg = snapshot.val() || "Aguardando Notifier...";
             evDiv.innerText = msg;
 
-            // Lógica dinâmica de cores mantida igual ao seu projeto original
-            if (msg.includes("FOGO") || msg.includes("incendio")) {
+            const msgMaiuscula = msg.toUpperCase();
+
+            // CASO 1: VERMELHO PISCANTE (Qualquer sinal de Alarme, Fogo ou Incêndio)
+            if (msgMaiuscula.includes("FOGO") || msgMaiuscula.includes("INCENDIO") || msgMaiuscula.includes("ALARME") || msgMaiuscula.includes("ALARM")) {
                 evDiv.style.color = "#ff0000";
                 evDiv.style.animation = "blink 1s infinite";
                 card.style.borderTopColor = "#ff0000";
-            } else if (msg.includes("ALARME") || msg.includes("Alarm")) {
-                evDiv.style.color = "#ff8c00";
-                evDiv.style.animation = "none";
-                card.style.borderTopColor = "#ff8c00";
-            } else if (msg.includes("FALHA") || msg.includes("falha")) {
+            } 
+            // CASO 2: AMARELO (Qualquer tipo de defeito, avaria, problemas de bateria ou falhas gerais)
+            else if (msgMaiuscula.includes("FALHA") || msgMaiuscula.includes("DEFEITO") || msgMaiuscula.includes("AVARIA") || msgMaiuscula.includes("TROUBLE")) {
                 evDiv.style.color = "#f1c40f";
                 evDiv.style.animation = "none";
                 card.style.borderTopColor = "#f1c40f";
-            } else {
+            } 
+            // CASO 3: VERDE (Mensagens de normalização, sistema resetado ou operando normalmente)
+            else if (msgMaiuscula.includes("NORMAL") || msgMaiuscula.includes("RESET") || msgMaiuscula.includes("SISTEMA OK") || msgMaiuscula.includes("AGUARDANDO")) {
+                evDiv.style.color = "#2ecc71";
+                evDiv.style.animation = "none";
+                card.style.borderTopColor = "#2ecc71";
+            } 
+            // CASO PADRÃO: Mantém em verde estável se não bater com nenhum critério de risco
+            else {
                 evDiv.style.color = "#2ecc71";
                 evDiv.style.animation = "none";
                 card.style.borderTopColor = "#2ecc71";
             }
         });
 
-        // 3. CORRIGIDO: Ajustada a sintaxe do texto de concatenação dos logs
+        // 2. ATUALIZAÇÃO DO HISTÓRICO EM TEMPO REAL
         database.ref('/central/historico').limitToLast(60).on('value', (snapshot) => {
             let logsHTML = "";
             snapshot.forEach((childSnapshot) => {
@@ -131,17 +141,19 @@
                 }
             });
             logContainer.innerText = logsHTML || "Sem novos logs registrados na nuvem.";
-            logContainer.scrollTop = logContainer.scrollHeight;
+            logContainer.scrollTop = logContainer.scrollHeight; // Rola automaticamente para o fim
         });
 
-        // Função do botão para abrir e fechar o histórico
+        // 3. CORREÇÃO DA FUNÇÃO DE ABRIR/FECHAR HISTÓRICO
         function toggleHistorico() {
+            // Verifica o estado atual computado para evitar bugs de inicialização vazia
             if (logContainer.style.display === "block") {
                 logContainer.style.display = "none";
                 document.getElementById('btnLog').innerText = "📜 VER HISTÓRICO REMOTO";
             } else {
                 logContainer.style.display = "block";
                 document.getElementById('btnLog').innerText = "⬅️ FECHAR HISTÓRICO";
+                logContainer.scrollTop = logContainer.scrollHeight; // Garante que abra mostrando os últimos eventos
             }
         }
     </script>
