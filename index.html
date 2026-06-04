@@ -73,18 +73,22 @@
         <div class="log-container" id="logContainer">Carregando histórico da nuvem...</div>
     </div>
 
-    <!-- Bibliotecas de Conexão com o Firebase -->
-    <script src="https://gstatic.com"></script>
-    <script src="https://gstatic.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
     <script>
-        // --- CONFIGURAÇÃO DO SEU PROJETO NO FIREBASE ---
+        // 2. CORRIGIDO: Inserido as suas credenciais de produção reais extraídas do console
         const firebaseConfig = {
-            apiKey: "COLE_AQUI_SUA_CHAVE_DE_API", // <-- Cole aqui a Chave da engrenagem ⚙️
-            databaseURL: "https://firebaseio.com"
+            apiKey: "AIzaSyDxqeZodkk0PaTeVvsQZCY410ymNca2xQE",
+            authDomain: "munitor-de-alarme.firebaseapp.com",
+            databaseURL: "https://munitor-de-alarme-default-rtdb.firebaseio.com",
+            projectId: "munitor-de-alarme",
+            storageBucket: "munitor-de-alarme.firebasestorage.app",
+            messagingSenderId: "110591997556",
+            appId: "1:110591997556:web:98493257f6b77d691c0321"
         };
 
-        // Inicialização
+        // Inicialização do banco
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
@@ -117,12 +121,14 @@
             }
         });
 
-        // Atualiza a lista de histórico na tela
+        // 3. CORRIGIDO: Ajustada a sintaxe do texto de concatenação dos logs
         database.ref('/central/historico').limitToLast(60).on('value', (snapshot) => {
             let logsHTML = "";
             snapshot.forEach((childSnapshot) => {
                 const data = childSnapshot.val();
-                logsHTML += > ${data.mensagem}\n;
+                if (data && data.mensagem) {
+                    logsHTML += "> " + data.mensagem + "\n";
+                }
             });
             logContainer.innerText = logsHTML || "Sem novos logs registrados na nuvem.";
             logContainer.scrollTop = logContainer.scrollHeight;
