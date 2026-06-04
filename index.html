@@ -49,7 +49,6 @@
             display: none;
             text-align: center;
         }
-        /* Centraliza o calendário fixo na tela */
         .flatpickr-calendar.inline {
             margin: 10px auto !important;
             display: block !important;
@@ -104,7 +103,6 @@
         
         <div class="filtro-container" id="filtroContainer">
             <label style="font-size: 14px; color: #aaa; display:block; margin-bottom:5px;">📅 Selecione o Dia, Mês e Ano:</label>
-            
             <input type="text" id="buscaData" style="display:none;">
             
             <button class="btn-busca" onclick="filtrarPorData()">🔍 Buscar Eventos</button>
@@ -141,17 +139,39 @@
         
         let todosOsLogs = []; 
 
-        // IMPORTANTE: Configura o calendário para iniciar já aberto e desenhado na tela
         flatpickr("#buscaData", {
             inline: true,
             dateFormat: "d/m/Y",
             locale: "pt"
         });
 
-        // Escuta o Status em Tempo Real
+        // Função Inteligente que traduz o formato bruto da Notifier (Z004 03:10P 011508 1M147) para visualização amigável
+        function formatarLinhaNotifier(linha) {
+            // Expressão regular para achar o padrão de hora e data da Notifier (ex: "03:10P 011508")
+            const padrao = /(\d{2}:\d{2}[AP])\s+(\d{6})/;
+            const match = linha.match(padrao);
+
+            if (match) {
+                const horaOriginal = match[1]; // "03:10P"
+                const dataOriginal = match[2]; // "011508" (MMDDAA)
+
+                // Extrai os pedaços da data americana compactada
+                const mes = dataOriginal.substring(0, 2);
+                const dia = dataOriginal.substring(2, 4);
+                const ano = "20" + dataOriginal.substring(4, 6);
+
+                const dataFormatada = `${dia}/${mes}/${ano}`;
+
+                // Substitui o bloco original pelo formato brasileiro com barras
+                return linha.replace(padrao, `${horaOriginal} - ${dataFormatada}`);
+            }
+            return linha; // Se a linha não tiver o padrão, mostra como recebeu
+        }
+
+        // Monitoramento de Status Principal (Aplica a formatação também no topo do card)
         database.ref('/central/status').on('value', (snapshot) => {
             const msg = snapshot.val() || "Aguardando Notifier...";
-            evDiv.innerText = msg;
+            evDiv.innerText = formatarLinhaNotifier(msg);
             const msgMaiuscula = msg.toUpperCase();
 
             if (msgMaiuscula.includes("FOGO") || msgMaiuscula.includes("INCENDIO") || msgMaiuscula.includes("ALARME") || msgMaiuscula.includes("ALARM")) {
@@ -169,7 +189,7 @@
             }
         });
 
-        // Coleta o histórico da nuvem
+        // Coleta o histórico bruto da nuvem
         database.ref('/central/historico').limitToLast(800).on('value', (snapshot) => {
             todosOsLogs = [];
             snapshot.forEach((childSnapshot) => {
@@ -181,16 +201,17 @@
             renderizarLogs(todosOsLogs);
         });
 
+        // Renderiza aplicando a formatação visual bonita linha por linha
         function renderizarLogs(lista) {
             let html = "";
             lista.forEach(linha => {
-                html += linha + "\n";
+                html += formatarLinhaNotifier(linha) + "\n";
             });
             logContainer.innerText = html || "Nenhum evento encontrado para esta data.";
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
-        // Filtra comparando a data selecionada com o texto gravado pela central
+        // Filtra comparando o clique do calendário com a string nativa armazenada (MMDDAA)
         function filtrarPorData() {
             const dataSelecionada = document.getElementById('buscaData').value; // Retorna "DD/MM/AAAA"
 
@@ -199,14 +220,16 @@
                 return;
             }
 
-            // Gera versão de ano com 2 dígitos (ex: 04/06/26) para bater se a central encurtar o ano
             const partes = dataSelecionada.split('/');
-            const anoCurto = partes[2].substring(2, 4);
-            const formatoDataCurto = `${partes[0]}/${partes[1]}/${anoCurto}`; 
+            const dia = partes[0];  
+            const mes = partes[1];  
+            const anoCurto = partes[2].substring(2, 4); 
+
+            // Monta a string que a central salvou no banco (ex: "011508")
+            const formatoNotifier = `${mes}${dia}${anoCurto}`; 
 
             const logsFiltrados = todosOsLogs.filter(linha => {
-                const linhaUpper = linha.toUpperCase();
-                return linhaUpper.includes(dataSelecionada) || linhaUpper.includes(formatoDataCurto);
+                return linha.toUpperCase().includes(formatoNotifier);
             });
 
             renderizarLogs(logsFiltrados);
