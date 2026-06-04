@@ -40,30 +40,42 @@
         .filtro-container {
             margin-top: 15px;
             background: #222;
-            padding: 12px;
+            padding: 15px;
             border-radius: 5px;
             display: none;
+            text-align: left;
         }
-        .input-busca {
+        .filtro-linha {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .filtro-linha label {
+            font-size: 14px;
+            color: #aaa;
+        }
+        input[type="date"], input[type="time"] {
             padding: 8px;
             border-radius: 5px;
             border: 1px solid #444;
             background: #000;
             color: #fff;
-            width: 60%;
-            box-sizing: border-box;
             font-size: 14px;
+            width: 65%;
+            box-sizing: border-box;
         }
         .btn-busca {
             background: #0af;
             color: #fff;
-            padding: 8px 12px;
+            padding: 10px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             font-weight: bold;
-            margin-left: 4px;
-            font-size: 13px;
+            font-size: 14px;
+            width: 100%;
+            margin-top: 10px;
         }
         .log-container {
             background: #000;
@@ -102,10 +114,17 @@
         <div class="btn" id="btnLog" onclick="toggleHistorico()">📜 VER HISTÓRICO REMOTO</div>
         
         <div class="filtro-container" id="filtroContainer">
-            <input type="text" class="input-busca" id="textoFiltro" placeholder="Digite a Data, Hora ou Evento...">
-            <button class="btn-busca" onclick="filtrarHistorico()">🔍 Buscar</button>
-            <br><br>
-            <button class="btn-busca" style="background:#27ae60; width: 95%; margin: 0;" onclick="limparFiltro()">📋 VER TODO O HISTÓRICO</button>
+            <div class="filtro-linha">
+                <label>📅 Escolher Data:</label>
+                <input type="date" id="buscaData">
+            </div>
+            <div class="filtro-linha">
+                <label>🕒 Escolher Hora (Opcional):</label>
+                <input type="time" id="buscaHora">
+            </div>
+            
+            <button class="btn-busca" onclick="filtrarPorDataHora()">🔍 Buscar Eventos</button>
+            <button class="btn-busca" style="background:#27ae60;" onclick="limparFiltro()">📋 VER TODO O HISTÓRICO</button>
         </div>
 
         <div class="log-container" id="logContainer">Carregando histórico da nuvem...</div>
@@ -135,7 +154,7 @@
         
         let todosOsLogs = []; 
 
-        // Escuta em tempo real o status atual
+        // Escuta o Status em Tempo Real
         database.ref('/central/status').on('value', (snapshot) => {
             const msg = snapshot.val() || "Aguardando Notifier...";
             evDiv.innerText = msg;
@@ -150,13 +169,13 @@
                 evDiv.style.animation = "none";
                 card.style.borderTopColor = "#2ecc71";
             } else {
-                evDiv.style.color = "#f1c40f"; // Se não for alarme e não for normal, assume amarelo para falhas/troubles
+                evDiv.style.color = "#f1c40f";
                 evDiv.style.animation = "none";
                 card.style.borderTopColor = "#f1c40f";
             }
         });
 
-        // Coleta e armazena os últimos 800 registros do banco
+        // Coleta o Histórico da Nuvem
         database.ref('/central/historico').limitToLast(800).on('value', (snapshot) => {
             todosOsLogs = [];
             snapshot.forEach((childSnapshot) => {
@@ -173,27 +192,45 @@
             lista.forEach(linha => {
                 html += linha + "\n";
             });
-            logContainer.innerText = html || "Nenhum evento corresponde ao termo digitado.";
+            logContainer.innerText = html || "Nenhum evento encontrado para esta combinação.";
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
-        // Sistema de busca por texto livre (Data, Hora, Minutos ou Conteúdo)
-        function filtrarHistorico() {
-            const termoBusca = document.getElementById('textoFiltro').value.trim().toUpperCase();
-            if (!termoBusca) {
-                alert("Por favor, digite um termo para buscar!");
+        // Sistema de filtro cruzado (Data do Calendário + Hora)
+        function filtrarPorDataHora() {
+            const dataSelecionada = document.getElementById('buscaData').value; // Retorna "AAAA-MM-DD"
+            const horaSelecionada = document.getElementById('buscaHora').value; // Retorna "HH:MM"
+
+            if (!dataSelecionada) {
+                alert("Por favor, selecione ao menos uma data no calendário!");
                 return;
             }
 
-            const logsFiltrados = todosOsLogs.filter(linha => {
-                return linha.toUpperCase().includes(termoBusca);
-            });
+            // Converte "AAAA-MM-DD" para o formato de texto da Notifier "DD/MM/AA" ou "DD/MM/AAAA"
+            const partes = dataSelecionada.split('-');
+            const anoCurto = partes[0].substring(2, 4); // Pega apenas os dois últimos dígitos do ano (ex: "26")
             
+            const formatoData1 = `${partes[2]}/${partes[1]}/${partes[0]}`; // 04/06/2026
+            const formatoData2 = `${partes[2]}/${partes[1]}/${anoCurto}`;  // 04/06/26
+
+            const logsFiltrados = todosOsLogs.filter(linha => {
+                const linhaUpper = linha.toUpperCase();
+                
+                // Verifica se a linha tem a data escolhida
+                const contemData = linhaUpper.includes(formatoData1) || linhaUpper.includes(formatoData2);
+                
+                // Se escolheu hora, filtra por ela também; se não escolheu, traz o dia todo
+                const contemHora = horaSelecionada ? linhaUpper.includes(horaSelecionada) : true;
+
+                return contemData && contemHora;
+            });
+
             renderizarLogs(logsFiltrados);
         }
 
         function limparFiltro() {
-            document.getElementById('textoFiltro').value = "";
+            document.getElementById('buscaData').value = "";
+            document.getElementById('buscaHora').value = "";
             renderizarLogs(todosOsLogs);
         }
 
