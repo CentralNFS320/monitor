@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Monitoramento Remoto</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -55,7 +59,8 @@
             font-size: 14px;
             color: #aaa;
         }
-        input[type="date"], input[type="time"] {
+        /* Ajuste dos inputs de busca */
+        .input-custom {
             padding: 8px;
             border-radius: 5px;
             border: 1px solid #444;
@@ -64,6 +69,7 @@
             font-size: 14px;
             width: 65%;
             box-sizing: border-box;
+            cursor: pointer;
         }
         .btn-busca {
             background: #0af;
@@ -116,11 +122,11 @@
         <div class="filtro-container" id="filtroContainer">
             <div class="filtro-linha">
                 <label>📅 Escolher Data:</label>
-                <input type="date" id="buscaData">
+                <input type="text" id="buscaData" class="input-custom" placeholder="Selecione o dia...">
             </div>
             <div class="filtro-linha">
-                <label>🕒 Escolher Hora (Opcional):</label>
-                <input type="time" id="buscaHora">
+                <label>🕒 Escolher Hora:</label>
+                <input type="text" id="buscaHora" class="input-custom" placeholder="Selecione a hora...">
             </div>
             
             <button class="btn-busca" onclick="filtrarPorDataHora()">🔍 Buscar Eventos</button>
@@ -132,6 +138,9 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
 
     <script>
         const firebaseConfig = {
@@ -154,7 +163,20 @@
         
         let todosOsLogs = []; 
 
-        // Escuta o Status em Tempo Real
+        // Ativa o calendário e relógio compatível com Windows 7
+        flatpickr("#buscaData", {
+            dateFormat: "d/m/Y",
+            locale: "pt"
+        });
+
+        flatpickr("#buscaHora", {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i",
+            time_24hr: true
+        });
+
+        // Monitoramento de Status
         database.ref('/central/status').on('value', (snapshot) => {
             const msg = snapshot.val() || "Aguardando Notifier...";
             evDiv.innerText = msg;
@@ -175,7 +197,7 @@
             }
         });
 
-        // Coleta o Histórico da Nuvem
+        // Coleta o histórico da nuvem
         database.ref('/central/historico').limitToLast(800).on('value', (snapshot) => {
             todosOsLogs = [];
             snapshot.forEach((childSnapshot) => {
@@ -196,30 +218,28 @@
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
-        // Sistema de filtro cruzado (Data do Calendário + Hora)
+        // Filtro que busca o texto da data/hora gravado pela central Notifier
         function filtrarPorDataHora() {
-            const dataSelecionada = document.getElementById('buscaData').value; // Retorna "AAAA-MM-DD"
+            const dataSelecionada = document.getElementById('buscaData').value; // Retorna "DD/MM/AAAA"
             const horaSelecionada = document.getElementById('buscaHora').value; // Retorna "HH:MM"
 
             if (!dataSelecionada) {
-                alert("Por favor, selecione ao menos uma data no calendário!");
+                alert("Por favor, selecione ao menos uma data!");
                 return;
             }
 
-            // Converte "AAAA-MM-DD" para o formato de texto da Notifier "DD/MM/AA" ou "DD/MM/AAAA"
-            const partes = dataSelecionada.split('-');
-            const anoCurto = partes[0].substring(2, 4); // Pega apenas os dois últimos dígitos do ano (ex: "26")
-            
-            const formatoData1 = `${partes[2]}/${partes[1]}/${partes[0]}`; // 04/06/2026
-            const formatoData2 = `${partes[2]}/${partes[1]}/${anoCurto}`;  // 04/06/26
+            // Gera versões de ano com 4 e 2 dígitos (ex: 2026 e 26) para bater com a central
+            const partes = dataSelecionada.split('/');
+            const anoCurto = partes[2].substring(2, 4);
+            const formatoDataCurto = `${partes[0]}/${partes[1]}/${anoCurto}`; // "04/06/26"
 
             const logsFiltrados = todosOsLogs.filter(linha => {
                 const linhaUpper = linha.toUpperCase();
                 
-                // Verifica se a linha tem a data escolhida
-                const contemData = linhaUpper.includes(formatoData1) || linhaUpper.includes(formatoData2);
+                // Procura se o texto da linha tem a data escolhida
+                const contemData = linhaUpper.includes(dataSelecionada) || linhaUpper.includes(formatoDataCurto);
                 
-                // Se escolheu hora, filtra por ela também; se não escolheu, traz o dia todo
+                // Procura se tem a hora escolhida (se foi preenchida)
                 const contemHora = horaSelecionada ? linhaUpper.includes(horaSelecionada) : true;
 
                 return contemData && contemHora;
@@ -229,8 +249,8 @@
         }
 
         function limparFiltro() {
-            document.getElementById('buscaData').value = "";
-            document.getElementById('buscaHora').value = "";
+            document.getElementById('buscaData')._flatpickr.clear();
+            document.getElementById('buscaHora')._flatpickr.clear();
             renderizarLogs(todosOsLogs);
         }
 
