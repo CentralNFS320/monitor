@@ -102,11 +102,13 @@
         <div class="btn" id="btnLog" onclick="toggleHistorico()">📜 VER HISTÓRICO REMOTO</div>
         
         <div class="filtro-container" id="filtroContainer">
-            <label style="font-size: 14px; color: #aaa; display:block; margin-bottom:5px;">📅 Selecione o Dia, Mês e Ano:</label>
+            <label style="font-size: 14px; color: #aaa; display:block; margin-bottom:5px;">📅 Selecione a Data e Hora desejada:</label>
+            
             <input type="text" id="buscaData" style="display:none;">
             
-            <button class="btn-busca" onclick="filtrarPorData()">🔍 Buscar Eventos</button>
+            <button class="btn-busca" onclick="filtrarPorDataHora()">🔍 Buscar Eventos</button>
             <button class="btn-busca" style="background:#27ae60;" onclick="limparFiltro()">📋 VER TODO O HISTÓRICO</button>
+            <button class="btn-busca" style="background:#555; margin-top: 5px;" onclick="minimizarPainel()">❌ FECHAR OPÇÕES DE BUSCA</button>
         </div>
 
         <div class="log-container" id="logContainer">Carregando histórico da nuvem...</div>
@@ -138,37 +140,35 @@
         const filtroContainer = document.getElementById('filtroContainer');
         
         let todosOsLogs = []; 
+        let fp; // Guardará a instância do calendário
 
-        flatpickr("#buscaData", {
+        // Inicializa o Flatpickr unificando Data + Relógio de Hora/Minuto na mesma tela
+        fp = flatpickr("#buscaData", {
             inline: true,
-            dateFormat: "d/m/Y",
+            enableTime: true,
+            time_24hr: true,
+            dateFormat: "d/m/Y H:i",
             locale: "pt"
         });
 
-        // Função Inteligente que traduz o formato bruto da Notifier (Z004 03:10P 011508 1M147) para visualização amigável
         function formatarLinhaNotifier(linha) {
-            // Expressão regular para achar o padrão de hora e data da Notifier (ex: "03:10P 011508")
             const padrao = /(\d{2}:\d{2}[AP])\s+(\d{6})/;
             const match = linha.match(padrao);
 
             if (match) {
-                const horaOriginal = match[1]; // "03:10P"
-                const dataOriginal = match[2]; // "011508" (MMDDAA)
+                const horaOriginal = match[1]; 
+                const dataOriginal = match[2]; 
 
-                // Extrai os pedaços da data americana compactada
                 const mes = dataOriginal.substring(0, 2);
                 const dia = dataOriginal.substring(2, 4);
                 const ano = "20" + dataOriginal.substring(4, 6);
 
                 const dataFormatada = `${dia}/${mes}/${ano}`;
-
-                // Substitui o bloco original pelo formato brasileiro com barras
                 return linha.replace(padrao, `${horaOriginal} - ${dataFormatada}`);
             }
-            return linha; // Se a linha não tiver o padrão, mostra como recebeu
+            return linha; 
         }
 
-        // Monitoramento de Status Principal (Aplica a formatação também no topo do card)
         database.ref('/central/status').on('value', (snapshot) => {
             const msg = snapshot.val() || "Aguardando Notifier...";
             evDiv.innerText = formatarLinhaNotifier(msg);
@@ -189,7 +189,6 @@
             }
         });
 
-        // Coleta o histórico bruto da nuvem
         database.ref('/central/historico').limitToLast(800).on('value', (snapshot) => {
             todosOsLogs = [];
             snapshot.forEach((childSnapshot) => {
@@ -201,47 +200,73 @@
             renderizarLogs(todosOsLogs);
         });
 
-        // Renderiza aplicando a formatação visual bonita linha por linha
         function renderizarLogs(lista) {
             let html = "";
             lista.forEach(linha => {
                 html += formatarLinhaNotifier(linha) + "\n";
             });
-            logContainer.innerText = html || "Nenhum evento encontrado para esta data.";
+            logContainer.innerText = html || "Nenhum evento encontrado para os critérios selecionados.";
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
-        // Filtra comparando o clique do calendário com a string nativa armazenada (MMDDAA)
-        function filtrarPorData() {
-            const dataSelecionada = document.getElementById('buscaData').value; // Retorna "DD/MM/AAAA"
+        // Realiza o filtro inteligente cruzando Data (MMDDAA) e Hora da Notifier
+        function filtrarPorDataHora() {
+            const stringCompleta = document.getElementById('buscaData').value; // Retorna "DD/MM/AAAA HH:MM" ou apenas "DD/MM/AAAA"
 
-            if (!dataSelecionada) {
-                alert("Por favor, selecione um dia no calendário!");
+            if (!stringCompleta) {
+                alert("Por favor, selecione uma data no calendário!");
                 return;
             }
 
-            const partes = dataSelecionada.split('/');
-            const dia = partes[0];  
-            const mes = partes[1];  
-            const anoCurto = partes[2].substring(2, 4); 
+            // Separa os dados digitados/clicados
+            const partesEspaco = stringCompleta.split(' ');
+            const dataParte = partesEspaco[0]; // "DD/MM/AAAA"
+            const horaParte = partesEspaco[1] ? partesEspaco[1] : ""; // "HH:MM"
 
-            // Monta a string que a central salvou no banco (ex: "011508")
-            const formatoNotifier = `${mes}${dia}${anoCurto}`; 
+            const partesData = dataParte.split('/');
+            const dia = partesData[0];  
+            const mes = partesData[1];  
+            const anoCurto = partesData[2].substring(2, 4); 
+
+            const formatoDataNotifier = `${mes}${dia}${anoCurto}`; // Ex: "060426"
 
             const logsFiltrados = todosOsLogs.filter(linha => {
-                return linha.toUpperCase().includes(formatoNotifier);
+                const linhaUpper = linha.toUpperCase();
+                const temPadraoNotifier = /(\d{2}:\d{2}[AP])\s+(\d{6})/.test(linhaUpper);
+
+                if (temPadraoNotifier) {
+                    const contemData = linhaUpper.includes(formatoDataNotifier);
+                    
+                    // Se o usuário mexeu na hora, filtra por ela também (independente de ser AM/PM ou formato de 24h)
+                    let contemHora = true;
+                    if (horaParte) {
+                        // Limpa os dois pontos da hora para buscar de forma maleável se necessário
+                        contemHora = linhaUpper.includes(horaParte);
+                    }
+                    return contemData && contemHora;
+                } else {
+                    // Logs normais de teste aparecem no dia corrente
+                    const hoje = new Date();
+                    const dataHojeStr = `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
+                    return dataParte === dataHojeStr;
+                }
             });
 
             renderizarLogs(logsFiltrados);
         }
 
         function limparFiltro() {
-            document.getElementById('buscaData')._flatpickr.clear();
+            if(fp) fp.clear();
             renderizarLogs(todosOsLogs);
         }
 
+        function minimizarPainel() {
+            filtroContainer.style.display = "none";
+            document.getElementById('btnLog').innerText = "📜 VER HISTÓRICO REMOTO";
+        }
+
         function toggleHistorico() {
-            if (logContainer.style.display === "block") {
+            if (logContainer.style.display === "block" && filtroContainer.style.display === "block") {
                 logContainer.style.display = "none";
                 filtroContainer.style.display = "none";
                 document.getElementById('btnLog').innerText = "📜 VER HISTÓRICO REMOTO";
