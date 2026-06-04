@@ -27,7 +27,7 @@
         }
         .btn {
             display: inline-block;
-            margin-top: 20px;
+            margin-top: 15px;
             color: #0af;
             text-decoration: none;
             font-weight: bold;
@@ -36,6 +36,34 @@
             border-radius: 5px;
             cursor: pointer;
             user-select: none;
+        }
+        .filtro-container {
+            margin-top: 15px;
+            background: #222;
+            padding: 12px;
+            border-radius: 5px;
+            display: none;
+        }
+        .input-busca {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background: #000;
+            color: #fff;
+            width: 60%;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        .btn-busca {
+            background: #0af;
+            color: #fff;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 4px;
+            font-size: 13px;
         }
         .log-container {
             background: #000;
@@ -47,8 +75,8 @@
             white-space: pre-wrap;
             font-family: monospace;
             color: #0f0;
-            margin-top: 15px;
-            display: none; /* Inicia fechado */
+            margin-top: 10px;
+            display: none;
             border-radius: 5px;
         }
         @keyframes blink {
@@ -72,6 +100,14 @@
         <hr>
         
         <div class="btn" id="btnLog" onclick="toggleHistorico()">📜 VER HISTÓRICO REMOTO</div>
+        
+        <div class="filtro-container" id="filtroContainer">
+            <input type="text" class="input-busca" id="textoFiltro" placeholder="Digite a Data, Hora ou Evento...">
+            <button class="btn-busca" onclick="filtrarHistorico()">🔍 Buscar</button>
+            <br><br>
+            <button class="btn-busca" style="background:#27ae60; width: 95%; margin: 0;" onclick="limparFiltro()">📋 VER TODO O HISTÓRICO</button>
+        </div>
+
         <div class="log-container" id="logContainer">Carregando histórico da nuvem...</div>
     </div>
 
@@ -79,7 +115,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
     <script>
-        // Configurações do seu banco de dados Realtime Database
         const firebaseConfig = {
             apiKey: "AIzaSyDxqeZodkk0PaTeVvsQZCY410ymNca2xQE",
             authDomain: "munitor-de-alarme.firebaseapp.com",
@@ -90,70 +125,88 @@
             appId: "1:110591997556:web:98493257f6b77d691c0321"
         };
 
-        // Inicialização do Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
         const card = document.getElementById('mainCard');
         const evDiv = document.getElementById('ev');
         const logContainer = document.getElementById('logContainer');
+        const filtroContainer = document.getElementById('filtroContainer');
+        
+        let todosOsLogs = []; 
 
-        // 1. FILTRO DINÂMICO DE CORES POR EVENTO (FOGO/ALARMES, FALHAS E NORMALIZAÇÃO)
+        // Escuta em tempo real o status atual
         database.ref('/central/status').on('value', (snapshot) => {
             const msg = snapshot.val() || "Aguardando Notifier...";
             evDiv.innerText = msg;
-
             const msgMaiuscula = msg.toUpperCase();
 
-            // CASO 1: VERMELHO PISCANTE (Qualquer sinal de Alarme, Fogo ou Incêndio)
             if (msgMaiuscula.includes("FOGO") || msgMaiuscula.includes("INCENDIO") || msgMaiuscula.includes("ALARME") || msgMaiuscula.includes("ALARM")) {
                 evDiv.style.color = "#ff0000";
                 evDiv.style.animation = "blink 1s infinite";
                 card.style.borderTopColor = "#ff0000";
-            } 
-            // CASO 2: AMARELO (Qualquer tipo de defeito, avaria, problemas de bateria ou falhas gerais)
-            else if (msgMaiuscula.includes("FALHA") || msgMaiuscula.includes("DEFEITO") || msgMaiuscula.includes("AVARIA") || msgMaiuscula.includes("TROUBLE")) {
-                evDiv.style.color = "#f1c40f";
+            } else if (msgMaiuscula.includes("NORMAL") || msgMaiuscula.includes("RESET") || msgMaiuscula.includes("SISTEMA OK") || msgMaiuscula.includes("AGUARDANDO")) {
+                evDiv.style.color = "#2ecc71";
+                evDiv.style.animation = "none";
+                card.style.borderTopColor = "#2ecc71";
+            } else {
+                evDiv.style.color = "#f1c40f"; // Se não for alarme e não for normal, assume amarelo para falhas/troubles
                 evDiv.style.animation = "none";
                 card.style.borderTopColor = "#f1c40f";
-            } 
-            // CASO 3: VERDE (Mensagens de normalização, sistema resetado ou operando normalmente)
-            else if (msgMaiuscula.includes("NORMAL") || msgMaiuscula.includes("RESET") || msgMaiuscula.includes("SISTEMA OK") || msgMaiuscula.includes("AGUARDANDO")) {
-                evDiv.style.color = "#2ecc71";
-                evDiv.style.animation = "none";
-                card.style.borderTopColor = "#2ecc71";
-            } 
-            // CASO PADRÃO: Mantém em verde estável se não bater com nenhum critério de risco
-            else {
-                evDiv.style.color = "#2ecc71";
-                evDiv.style.animation = "none";
-                card.style.borderTopColor = "#2ecc71";
             }
         });
 
-        // 2. ATUALIZAÇÃO DO HISTÓRICO EM TEMPO REAL
-        database.ref('/central/historico').limitToLast(60).on('value', (snapshot) => {
-            let logsHTML = "";
+        // Coleta e armazena os últimos 800 registros do banco
+        database.ref('/central/historico').limitToLast(800).on('value', (snapshot) => {
+            todosOsLogs = [];
             snapshot.forEach((childSnapshot) => {
                 const data = childSnapshot.val();
                 if (data && data.mensagem) {
-                    logsHTML += "> " + data.mensagem + "\n";
+                    todosOsLogs.push("> " + data.mensagem);
                 }
             });
-            logContainer.innerText = logsHTML || "Sem novos logs registrados na nuvem.";
-            logContainer.scrollTop = logContainer.scrollHeight; // Rola automaticamente para o fim
+            renderizarLogs(todosOsLogs);
         });
 
-        // 3. CORREÇÃO DA FUNÇÃO DE ABRIR/FECHAR HISTÓRICO
+        function renderizarLogs(lista) {
+            let html = "";
+            lista.forEach(linha => {
+                html += linha + "\n";
+            });
+            logContainer.innerText = html || "Nenhum evento corresponde ao termo digitado.";
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Sistema de busca por texto livre (Data, Hora, Minutos ou Conteúdo)
+        function filtrarHistorico() {
+            const termoBusca = document.getElementById('textoFiltro').value.trim().toUpperCase();
+            if (!termoBusca) {
+                alert("Por favor, digite um termo para buscar!");
+                return;
+            }
+
+            const logsFiltrados = todosOsLogs.filter(linha => {
+                return linha.toUpperCase().includes(termoBusca);
+            });
+            
+            renderizarLogs(logsFiltrados);
+        }
+
+        function limparFiltro() {
+            document.getElementById('textoFiltro').value = "";
+            renderizarLogs(todosOsLogs);
+        }
+
         function toggleHistorico() {
-            // Verifica o estado atual computado para evitar bugs de inicialização vazia
             if (logContainer.style.display === "block") {
                 logContainer.style.display = "none";
+                filtroContainer.style.display = "none";
                 document.getElementById('btnLog').innerText = "📜 VER HISTÓRICO REMOTO";
             } else {
                 logContainer.style.display = "block";
+                filtroContainer.style.display = "block";
                 document.getElementById('btnLog').innerText = "⬅️ FECHAR HISTÓRICO";
-                logContainer.scrollTop = logContainer.scrollHeight; // Garante que abra mostrando os últimos eventos
+                logContainer.scrollTop = logContainer.scrollHeight;
             }
         }
     </script>
