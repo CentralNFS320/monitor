@@ -47,34 +47,17 @@
             padding: 15px;
             border-radius: 5px;
             display: none;
-            text-align: left;
+            text-align: center;
         }
-        .filtro-linha {
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .filtro-linha label {
-            font-size: 14px;
-            color: #aaa;
-        }
-        /* Ajuste dos inputs de busca */
-        .input-custom {
-            padding: 8px;
-            border-radius: 5px;
-            border: 1px solid #444;
-            background: #000;
-            color: #fff;
-            font-size: 14px;
-            width: 65%;
-            box-sizing: border-box;
-            cursor: pointer;
+        /* Centraliza o calendário fixo na tela */
+        .flatpickr-calendar.inline {
+            margin: 10px auto !important;
+            display: block !important;
         }
         .btn-busca {
             background: #0af;
             color: #fff;
-            padding: 10px;
+            padding: 12px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
@@ -120,16 +103,11 @@
         <div class="btn" id="btnLog" onclick="toggleHistorico()">📜 VER HISTÓRICO REMOTO</div>
         
         <div class="filtro-container" id="filtroContainer">
-            <div class="filtro-linha">
-                <label>📅 Escolher Data:</label>
-                <input type="text" id="buscaData" class="input-custom" placeholder="Selecione o dia...">
-            </div>
-            <div class="filtro-linha">
-                <label>🕒 Escolher Hora:</label>
-                <input type="text" id="buscaHora" class="input-custom" placeholder="Selecione a hora...">
-            </div>
+            <label style="font-size: 14px; color: #aaa; display:block; margin-bottom:5px;">📅 Selecione o Dia, Mês e Ano:</label>
             
-            <button class="btn-busca" onclick="filtrarPorDataHora()">🔍 Buscar Eventos</button>
+            <input type="text" id="buscaData" style="display:none;">
+            
+            <button class="btn-busca" onclick="filtrarPorData()">🔍 Buscar Eventos</button>
             <button class="btn-busca" style="background:#27ae60;" onclick="limparFiltro()">📋 VER TODO O HISTÓRICO</button>
         </div>
 
@@ -163,20 +141,14 @@
         
         let todosOsLogs = []; 
 
-        // Ativa o calendário e relógio compatível com Windows 7
+        // IMPORTANTE: Configura o calendário para iniciar já aberto e desenhado na tela
         flatpickr("#buscaData", {
+            inline: true,
             dateFormat: "d/m/Y",
             locale: "pt"
         });
 
-        flatpickr("#buscaHora", {
-            enableTime: true,
-            noCalendar: true,
-            dateFormat: "H:i",
-            time_24hr: true
-        });
-
-        // Monitoramento de Status
+        // Escuta o Status em Tempo Real
         database.ref('/central/status').on('value', (snapshot) => {
             const msg = snapshot.val() || "Aguardando Notifier...";
             evDiv.innerText = msg;
@@ -214,35 +186,27 @@
             lista.forEach(linha => {
                 html += linha + "\n";
             });
-            logContainer.innerText = html || "Nenhum evento encontrado para esta combinação.";
+            logContainer.innerText = html || "Nenhum evento encontrado para esta data.";
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
-        // Filtro que busca o texto da data/hora gravado pela central Notifier
-        function filtrarPorDataHora() {
+        // Filtra comparando a data selecionada com o texto gravado pela central
+        function filtrarPorData() {
             const dataSelecionada = document.getElementById('buscaData').value; // Retorna "DD/MM/AAAA"
-            const horaSelecionada = document.getElementById('buscaHora').value; // Retorna "HH:MM"
 
             if (!dataSelecionada) {
-                alert("Por favor, selecione ao menos uma data!");
+                alert("Por favor, selecione um dia no calendário!");
                 return;
             }
 
-            // Gera versões de ano com 4 e 2 dígitos (ex: 2026 e 26) para bater com a central
+            // Gera versão de ano com 2 dígitos (ex: 04/06/26) para bater se a central encurtar o ano
             const partes = dataSelecionada.split('/');
             const anoCurto = partes[2].substring(2, 4);
-            const formatoDataCurto = `${partes[0]}/${partes[1]}/${anoCurto}`; // "04/06/26"
+            const formatoDataCurto = `${partes[0]}/${partes[1]}/${anoCurto}`; 
 
             const logsFiltrados = todosOsLogs.filter(linha => {
                 const linhaUpper = linha.toUpperCase();
-                
-                // Procura se o texto da linha tem a data escolhida
-                const contemData = linhaUpper.includes(dataSelecionada) || linhaUpper.includes(formatoDataCurto);
-                
-                // Procura se tem a hora escolhida (se foi preenchida)
-                const contemHora = horaSelecionada ? linhaUpper.includes(horaSelecionada) : true;
-
-                return contemData && contemHora;
+                return linhaUpper.includes(dataSelecionada) || linhaUpper.includes(formatoDataCurto);
             });
 
             renderizarLogs(logsFiltrados);
@@ -250,7 +214,6 @@
 
         function limparFiltro() {
             document.getElementById('buscaData')._flatpickr.clear();
-            document.getElementById('buscaHora')._flatpickr.clear();
             renderizarLogs(todosOsLogs);
         }
 
