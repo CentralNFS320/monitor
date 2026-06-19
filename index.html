@@ -5,86 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Monitoramento Remoto</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background: #121212;
-            color: #e0e0e0;
-            margin: 0;
-            padding: 20px;
-        }
-        .card {
-            background: #1e1e1e;
-            padding: 20px;
-            border-top: 5px solid #2ecc71;
-            display: inline-block;
-            margin-top: 30px;
-            width: 95%;
-            max-width: 600px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.7);
-            transition: all 0.5s ease;
-        }
-        .tela-central {
-            font-family: 'Courier New', Courier, monospace;
-            background: #050505;
-            color: #2ecc71;
-            padding: 15px;
-            text-align: left;
-            font-size: 16px;
-            line-height: 1.4;
-            border-radius: 6px;
-            border: 1px solid #333;
-            white-space: pre-wrap;
-            min-height: 80px;
-            font-weight: bold;
-            letter-spacing: 0.5px;
-            margin: 20px 0;
-            transition: color 0.3s ease;
-        }
-        .btn {
-            display: inline-block;
-            margin-top: 20px;
-            color: #0af;
-            text-decoration: none;
-            font-weight: bold;
-            border: 1px solid #0af;
-            padding: 12px 24px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .btn:hover {
-            background: rgba(0, 170, 255, 0.1);
-        }
-        .log-container {
-            background: #000;
-            border: 1px solid #333;
-            padding: 12px;
-            height: 300px;
-            overflow-y: scroll;
-            text-align: left;
-            white-space: pre-wrap;
-            font-family: 'Courier New', monospace;
-            color: #2ecc71;
-            margin-top: 15px;
-            display: none;
-            font-size: 13px;
-        }
-        .alerta-offline {
-            background: #721c24;
-            color: #f8d7da;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            font-weight: bold;
-            display: none;
-            border: 1px solid #f5c6cb;
-        }
-        @keyframes piscar {
-            0% { box-shadow: 0 0 5px #ff3333; background: #1e1e1e; }
-            100% { box-shadow: 0 0 25px #ff3333; background: #2a0000; }
-        }
+        body { font-family: Arial, sans-serif; text-align: center; background: #121212; color: #e0e0e0; margin: 0; padding: 20px; }
+        .card { background: #1e1e1e; padding: 20px; border-top: 5px solid #2ecc71; display: inline-block; margin-top: 30px; width: 95%; max-width: 600px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); transition: all 0.5s ease; }
+        .tela-central { font-family: 'Courier New', Courier, monospace; background: #050505; color: #2ecc71; padding: 15px; text-align: left; font-size: 16px; line-height: 1.4; border-radius: 6px; border: 1px solid #333; white-space: pre-wrap; min-height: 80px; font-weight: bold; letter-spacing: 0.5px; margin: 20px 0; }
+        .btn { display: inline-block; margin-top: 20px; color: #0af; text-decoration: none; font-weight: bold; border: 1px solid #0af; padding: 12px 24px; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        .btn:hover { background: rgba(0, 170, 255, 0.1); }
+        .log-container { background: #000; border: 1px solid #333; padding: 12px; height: 300px; overflow-y: scroll; text-align: left; white-space: pre-wrap; font-family: 'Courier New', monospace; color: #2ecc71; margin-top: 15px; display: none; font-size: 13px; }
+        .alerta-offline { background: #721c24; color: #f8d7da; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-weight: bold; display: none; border: 1px solid #f5c6cb; }
+        @keyframes piscar { 0% { box-shadow: 0 0 5px #ff3333; background: #1e1e1e; } 100% { box-shadow: 0 0 25px #ff3333; background: #2a0000; } }
     </style>
 </head>
 <body>
@@ -92,26 +20,19 @@
     <div class="card" id="mainCard">
         <h1>CF SISTEMAS</h1>
         <h4 style="color:#888; margin-top:-10px;">Monitoramento NFS-320 (Remoto)</h4>
-        
         <div id="statusConexao" class="alerta-offline">🚨 ATENÇÃO: PERDA DE COMUNICAÇÃO COM O MÓDULO ESP32!</div>
-        
         <div id="ev" class="tela-central">Conectando ao Firebase...</div>
-        
         <p style="color:#666; font-size:12px;" id="txtStatus">Status: Sincronizando com a nuvem...</p>
         <hr style="border-color: #222;">
-        
         <div class="btn" id="btnLog" onclick="toggleHistorico()">📜 VER HISTÓRICO REMOTO</div>
         <div class="log-container" id="logContainer">Carregando histórico da nuvem...</div>
     </div>
 
-    <!-- Bibliotecas oficiais do Firebase Web (versão estável 8.x) -->
-  <!-- Cole este bloco de scripts correto no lugar das tags quebradas -->
+    <!-- CARREGAMENTO SEGURO VIA CDN VERSÃO 8 -->
     <script src="https://gstatic.com"></script>
     <script src="https://gstatic.com"></script>
-
 
     <script>
-        // --- CONFIGURAÇÃO DO SEU PROJETO NO FIREBASE ---
         const firebaseConfig = {
             apiKey: "AIzaSyDXqeZodkk0PaTeVvsQZCY410ymNca2xQE", 
             databaseURL: "https://firebaseio.com"
@@ -147,19 +68,16 @@
         });
 
         database.ref('/central/heartbeat').on('value', (snapshot) => {
-            if (snapshot.exists()) {
-                ultimoPingESP = snapshot.val();
-            }
+            if (snapshot.exists()) { ultimoPingESP = snapshot.val(); }
         });
 
         setInterval(() => {
             const tempoAtualServidor = Date.now() + offsetTempoServidor;
             const tempoSemSinal = (tempoAtualServidor - ultimoPingESP) / 1000;
-            
             if (tempoSemSinal > 25) { 
                 divOffline.style.display = "block";
                 divOffline.innerText = "🚨 ALERTA: DISPOSITIVO OFFLINE HÁ " + Math.round(tempoSemSinal) + " SEGUNDOS!";
-                evDiv.innerText = "SISTEMA DESCONECTADO\n(ESP32 SEM ALIMENTAÇÃO OS WI-FI)";
+                evDiv.innerText = "SISTEMA DESCONECTADO\n(ESP32 SEM ALIMENTAÇÃO OU WI-FI)";
                 evDiv.style.color = "#f1c40f"; 
                 card.style.borderTopColor = "#f1c40f";
                 card.style.animation = "none";
@@ -174,48 +92,33 @@
             const tempoAtualServidor = Date.now() + offsetTempoServidor;
             const tempoSemSinal = (tempoAtualServidor - ultimoPingESP) / 1000;
             if (tempoSemSinal > 25) return;
-
             txtStatus.innerText = "Status: Monitoramento Ativo | Classe: " + statusAtual;
-
             if (statusAtual === "FOGO") {
-                evDiv.style.color = "#ff3333";
-                card.style.borderTopColor = "#ff3333";
-                card.style.animation = "piscar 0.8s infinite alternate";
+                evDiv.style.color = "#ff3333"; card.style.borderTopColor = "#ff3333"; card.style.animation = "piscar 0.8s infinite alternate";
             } else if (statusAtual === "FALHA") {
-                evDiv.style.color = "#f1c40f";
-                card.style.borderTopColor = "#f1c40f";
-                card.style.animation = "none";
+                evDiv.style.color = "#f1c40f"; card.style.borderTopColor = "#f1c40f"; card.style.animation = "none";
             } else {
-                evDiv.style.color = "#2ecc71";
-                card.style.borderTopColor = "#2ecc71";
-                card.style.animation = "none";
+                evDiv.style.color = "#2ecc71"; card.style.borderTopColor = "#2ecc71"; card.style.animation = "none";
             }
         }
 
-        // --- HISTÓRICO REMOTO COMPLETO ---
-      // --- CORREÇÃO DE LEITURA DO HISTÓRICO ---
-database.ref('/central/historico').limitToLast(40).on('value', (snapshot) => {
-    let logsHTML = "";
-    snapshot.forEach((childSnapshot) => {
-        const data = childSnapshot.val();
-        let prefixo = "> ";
-        
-        // Alinhado exatamente com o "FOGO" e "FALHA" que o ESP32 envia
-        if(data.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
-        else if(data.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
-        else prefixo = "✅ [OK] ";
-        
-        let dataFormatada = "";
-        if (data.timestamp) {
-            const d = new Date(data.timestamp);
-            dataFormatada = "[" + d.toLocaleDateString('pt-BR') + " " + d.toLocaleTimeString('pt-BR') + "] ";
-        }
-        
-        logsHTML = dataFormatada + prefixo + data.mensagem + "\n" + logsHTML;
-    });
-    logContainer.innerText = logsHTML || "Nenhum histórico disponível na nuvem.";
-});
-
+        database.ref('/central/historico').limitToLast(40).on('value', (snapshot) => {
+            let logsHTML = "";
+            snapshot.forEach((childSnapshot) => {
+                const data = childSnapshot.val();
+                let prefixo = "> ";
+                if(data.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
+                else if(data.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
+                else prefixo = "✅ [OK] ";
+                let dataFormatada = "";
+                if (data.timestamp) {
+                    const d = new Date(data.timestamp);
+                    dataFormatada = "[" + d.toLocaleDateString('pt-BR') + " " + d.toLocaleTimeString('pt-BR') + "] ";
+                }
+                logsHTML = dataFormatada + prefixo + data.mensagem + "\n" + logsHTML;
+            });
+            logContainer.innerText = logsHTML || "Nenhum histórico disponível na nuvem.";
+        });
 
         function toggleHistorico() {
             if (logContainer.style.display === "block") {
