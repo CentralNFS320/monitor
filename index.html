@@ -4,85 +4,87 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Monitoramento Remoto</title>
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
-
     <style>
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            background: #1a1a1a;
-            color: white;
+            background: #121212;
+            color: #e0e0e0;
             margin: 0;
-            padding: 0;
+            padding: 20px;
         }
         .card {
-            background: #333;
+            background: #1e1e1e;
             padding: 20px;
-            border-top: 5px solid #0af;
+            border-top: 5px solid #2ecc71;
             display: inline-block;
             margin-top: 30px;
-            width: 90%;
-            max-width: 500px;
+            width: 95%;
+            max-width: 600px;
             border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            transition: border-color 0.5s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.7);
+            transition: all 0.5s ease;
+        }
+        .tela-central {
+            font-family: 'Courier New', Courier, monospace;
+            background: #050505;
+            color: #2ecc71;
+            padding: 15px;
+            text-align: left;
+            font-size: 16px;
+            line-height: 1.4;
+            border-radius: 6px;
+            border: 1px solid #333;
+            white-space: pre-wrap;
+            min-height: 80px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            margin: 20px 0;
+            transition: color 0.3s ease;
         }
         .btn {
             display: inline-block;
-            margin-top: 15px;
+            margin-top: 20px;
             color: #0af;
             text-decoration: none;
             font-weight: bold;
             border: 1px solid #0af;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 5px;
             cursor: pointer;
-            user-select: none;
+            transition: 0.3s;
         }
-        .filtro-container {
-            margin-top: 15px;
-            background: #222;
-            padding: 15px;
-            border-radius: 5px;
-            display: none;
-            text-align: center;
-        }
-        .flatpickr-calendar.inline {
-            margin: 10px auto !important;
-            display: block !important;
-        }
-        .btn-busca {
-            background: #0af;
-            color: #fff;
-            padding: 12px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 14px;
-            width: 100%;
-            margin-top: 10px;
+        .btn:hover {
+            background: rgba(0, 170, 255, 0.1);
         }
         .log-container {
             background: #000;
-            border: 1px solid #444;
-            padding: 10px;
-            height: 250px;
+            border: 1px solid #333;
+            padding: 12px;
+            height: 300px;
             overflow-y: scroll;
             text-align: left;
             white-space: pre-wrap;
-            font-family: monospace;
-            color: #0f0;
-            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            color: #2ecc71;
+            margin-top: 15px;
             display: none;
-            border-radius: 5px;
+            font-size: 13px;
         }
-        @keyframes blink {
-            0% { opacity: 1; }
-            50% { opacity: 0.4; }
-            100% { opacity: 1; }
+        /* Layout de Alerta de Queda de Sinal */
+        .alerta-offline {
+            background: #721c24;
+            color: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            display: none; /* Escondido por padrão */
+            border: 1px solid #f5c6cb;
+        }
+        @keyframes piscar {
+            0% { box-shadow: 0 0 5px #ff3333; background: #1e1e1e; }
+            100% { box-shadow: 0 0 25px #ff3333; background: #2a0000; }
         }
     </style>
 </head>
@@ -90,45 +92,30 @@
 
     <div class="card" id="mainCard">
         <h1>CF SISTEMAS</h1>
-        <h3>Monitoramento NFS-320 (Remoto)</h3>
+        <h4 style="color:#888; margin-top:-10px;">Monitoramento NFS-320 (Remoto)</h4>
         
-        <div id="ev" style="font-size:18px; color:#2ecc71; margin:20px 0; min-height:50px; font-weight:bold;">
-            Conectando ao Firebase...
-        </div>
+        <!-- Faixa de aviso de erro de conexão -->
+        <div id="statusConexao" class="alerta-offline">🚨 ATENÇÃO: PERDA DE COMUNICAÇÃO COM O MÓDULO ESP32!</div>
         
-        <p style="color:#888; font-size:12px;">Status: Monitoramento Global Ativo</p>
-        <hr>
+        <!-- Bloco replicador de tela -->
+        <div id="ev" class="tela-central">Conectando ao Firebase...</div>
+        
+        <p style="color:#666; font-size:12px;" id="txtStatus">Status: Sincronizando com a nuvem...</p>
+        <hr style="border-color: #222;">
         
         <div class="btn" id="btnLog" onclick="toggleHistorico()">📜 VER HISTÓRICO REMOTO</div>
-        
-        <div class="filtro-container" id="filtroContainer">
-            <label style="font-size: 14px; color: #aaa; display:block; margin-bottom:5px;">📅 Selecione a Data e Hora desejada:</label>
-            
-            <input type="text" id="buscaData" style="display:none;">
-            
-            <button class="btn-busca" onclick="filtrarPorDataHora()">🔍 Buscar Eventos</button>
-            <button class="btn-busca" style="background:#27ae60;" onclick="limparFiltro()">📋 VER TODO O HISTÓRICO</button>
-            <button class="btn-busca" style="background:#555; margin-top: 5px;" onclick="minimizarPainel()">❌ FECHAR OPÇÕES DE BUSCA</button>
-        </div>
-
         <div class="log-container" id="logContainer">Carregando histórico da nuvem...</div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+    <!-- CORRIGIDO: Scripts oficiais integrados com a sua arquitetura do Firebase -->
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
 
     <script>
+        // --- CONFIGURAÇÃO DO SEU PROJETO NO FIREBASE ---
         const firebaseConfig = {
-            apiKey: "AIzaSyDxqeZodkk0PaTeVvsQZCY410ymNca2xQE",
-            authDomain: "munitor-de-alarme.firebaseapp.com",
-            databaseURL: "https://munitor-de-alarme-default-rtdb.firebaseio.com",
-            projectId: "munitor-de-alarme",
-            storageBucket: "munitor-de-alarme.firebasestorage.app",
-            messagingSenderId: "110591997556",
-            appId: "1:110591997556:web:98493257f6b77d691c0321"
+            apiKey: "AIzaSyDXqeZodkk0PaTeVvsQZCY410ymNca2xQE", 
+            databaseURL: "https://munitor-de-alarme-default-rtdb.firebaseio.com"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -137,144 +124,104 @@
         const card = document.getElementById('mainCard');
         const evDiv = document.getElementById('ev');
         const logContainer = document.getElementById('logContainer');
-        const filtroContainer = document.getElementById('filtroContainer');
-        
-        let todosOsLogs = []; 
-        let fp; // Guardará a instância do calendário
+        const txtStatus = document.getElementById('txtStatus');
+        const divOffline = document.getElementById('statusConexao');
 
-        // Inicializa o Flatpickr unificando Data + Relógio de Hora/Minuto na mesma tela
-        fp = flatpickr("#buscaData", {
-            inline: true,
-            enableTime: true,
-            time_24hr: true,
-            dateFormat: "d/m/Y H:i",
-            locale: "pt"
+        let statusAtual = "NORMAL";
+        let ultimoPingESP = Date.now();
+        let offsetTempoServidor = 0; // Armazena a diferença de relógio do PC com o Google
+
+        // Calcula a diferença de relógio entre o computador local e o servidor Firebase
+        database.ref(".info/serverTimeOffset").on("value", (snapshot) => {
+            offsetTempoServidor = snapshot.val() || 0;
         });
 
-        function formatarLinhaNotifier(linha) {
-            const padrao = /(\d{2}:\d{2}[AP])\s+(\d{6})/;
-            const match = linha.match(padrao);
+        // 1. Escuta a classificação do status
+        database.ref('/central/tipo_status').on('value', (snapshot) => {
+            statusAtual = snapshot.val() || "NORMAL";
+            atualizarLayoutCores();
+        });
 
-            if (match) {
-                const horaOriginal = match[1]; 
-                const dataOriginal = match[2]; 
-
-                const mes = dataOriginal.substring(0, 2);
-                const dia = dataOriginal.substring(2, 4);
-                const ano = "20" + dataOriginal.substring(4, 6);
-
-                const dataFormatada = `${dia}/${mes}/${ano}`;
-                return linha.replace(padrao, `${horaOriginal} - ${dataFormatada}`);
-            }
-            return linha; 
-        }
-
+        // 2. Escuta o texto bruto enviado
         database.ref('/central/status').on('value', (snapshot) => {
             const msg = snapshot.val() || "Aguardando Notifier...";
-            evDiv.innerText = formatarLinhaNotifier(msg);
-            const msgMaiuscula = msg.toUpperCase();
+            evDiv.innerText = msg;
+            
+            // Força a atualização do ping ao receber texto direto
+            ultimoPingESP = Date.now() + offsetTempoServidor; 
+            divOffline.style.display = "none";
+        });
 
-            if (msgMaiuscula.includes("FOGO") || msgMaiuscula.includes("INCENDIO") || msgMaiuscula.includes("ALARME") || msgMaiuscula.includes("ALARM")) {
-                evDiv.style.color = "#ff0000";
-                evDiv.style.animation = "blink 1s infinite";
-                card.style.borderTopColor = "#ff0000";
-            } else if (msgMaiuscula.includes("NORMAL") || msgMaiuscula.includes("RESET") || msgMaiuscula.includes("SISTEMA OK") || msgMaiuscula.includes("AGUARDANDO")) {
-                evDiv.style.color = "#2ecc71";
-                evDiv.style.animation = "none";
-                card.style.borderTopColor = "#2ecc71";
-            } else {
-                evDiv.style.color = "#f1c40f";
-                evDiv.style.animation = "none";
-                card.style.borderTopColor = "#f1c40f";
+        // 3. CORRIGIDO: Escuta o Heartbeat oficial do ESP32 para monitorar queda de energia
+        database.ref('/central/heartbeat').on('value', (snapshot) => {
+            if (snapshot.exists()) {
+                ultimoPingESP = snapshot.val();
             }
         });
 
-        database.ref('/central/historico').limitToLast(800).on('value', (snapshot) => {
-            todosOsLogs = [];
+        // Verifica a cada 3 segundos se o último sinal recebido tem mais de 25 segundos
+        setInterval(() => {
+            const tempoAtualServidor = Date.now() + offsetTempoServidor;
+            const tempoSemSinal = (tempoAtualServidor - ultimoPingESP) / 1000;
+            
+            if (tempoSemSinal > 25) { 
+                divOffline.style.display = "block";
+                divOffline.innerText = "🚨 ALERTA: DISPOSITIVO OFFLINE HÁ " + Math.round(tempoSemSinal) + " SEGUNDOS!";
+                evDiv.innerText = "SISTEMA DESCONECTADO\n(ESP32 SEM ALIMENTAÇÃO OU SEM WI-FI)";
+                evDiv.style.color = "#f1c40f"; // Alerta Amarelo de Erro Geral
+                card.style.borderTopColor = "#f1c40f";
+                card.style.animation = "none";
+                txtStatus.innerText = "Status: Indisponível | Sem sinal da placa";
+            } else {
+                divOffline.style.display = "none";
+                atualizarLayoutCores();
+            }
+        }, 3000);
+
+        function atualizarLayoutCores() {
+            // Se o tempo sem sinal estourou o limite, ignora a triagem comum
+            const tempoAtualServidor = Date.now() + offsetTempoServidor;
+            const tempoSemSinal = (tempoAtualServidor - ultimoPingESP) / 1000;
+            if (tempoSemSinal > 25) return;
+
+            txtStatus.innerText = "Status: Monitoramento Ativo | Classe: " + statusAtual;
+
+            if (statusAtual === "FOGO") {
+                evDiv.style.color = "#ff3333";
+                card.style.borderTopColor = "#ff3333";
+                card.style.animation = "piscar 0.8s infinite alternate";
+            } else if (statusAtual === "FALHA") {
+                evDiv.style.color = "#f1c40f";
+                card.style.borderTopColor = "#f1c40f";
+                card.style.animation = "none";
+            } else {
+                evDiv.style.color = "#2ecc71";
+                card.style.borderTopColor = "#2ecc71";
+                card.style.animation = "none";
+            }
+        }
+
+        // 4. Lista do Histórico (Corrigido as crases de Template Strings removidas por erro)
+        database.ref('/central/historico').limitToLast(40).on('value', (snapshot) => {
+            let logsHTML = "";
             snapshot.forEach((childSnapshot) => {
                 const data = childSnapshot.val();
-                if (data && data.mensagem) {
-                    todosOsLogs.push("> " + data.mensagem);
-                }
+                let prefixo = "> ";
+                if(data.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
+                if(data.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
+                logsHTML += prefixo + data.mensagem + "\n------------------------\n";
             });
-            renderizarLogs(todosOsLogs);
+            logContainer.innerText = logsHTML || "Sem novos logs registrados.";
+            logContainer.scrollTop = logContainer.scrollHeight;
         });
 
-        function renderizarLogs(lista) {
-            let html = "";
-            lista.forEach(linha => {
-                html += formatarLinhaNotifier(linha) + "\n";
-            });
-            logContainer.innerText = html || "Nenhum evento encontrado para os critérios selecionados.";
-            logContainer.scrollTop = logContainer.scrollHeight;
-        }
-
-        // Realiza o filtro inteligente cruzando Data (MMDDAA) e Hora da Notifier
-        function filtrarPorDataHora() {
-            const stringCompleta = document.getElementById('buscaData').value; // Retorna "DD/MM/AAAA HH:MM" ou apenas "DD/MM/AAAA"
-
-            if (!stringCompleta) {
-                alert("Por favor, selecione uma data no calendário!");
-                return;
-            }
-
-            // Separa os dados digitados/clicados
-            const partesEspaco = stringCompleta.split(' ');
-            const dataParte = partesEspaco[0]; // "DD/MM/AAAA"
-            const horaParte = partesEspaco[1] ? partesEspaco[1] : ""; // "HH:MM"
-
-            const partesData = dataParte.split('/');
-            const dia = partesData[0];  
-            const mes = partesData[1];  
-            const anoCurto = partesData[2].substring(2, 4); 
-
-            const formatoDataNotifier = `${mes}${dia}${anoCurto}`; // Ex: "060426"
-
-            const logsFiltrados = todosOsLogs.filter(linha => {
-                const linhaUpper = linha.toUpperCase();
-                const temPadraoNotifier = /(\d{2}:\d{2}[AP])\s+(\d{6})/.test(linhaUpper);
-
-                if (temPadraoNotifier) {
-                    const contemData = linhaUpper.includes(formatoDataNotifier);
-                    
-                    // Se o usuário mexeu na hora, filtra por ela também (independente de ser AM/PM ou formato de 24h)
-                    let contemHora = true;
-                    if (horaParte) {
-                        // Limpa os dois pontos da hora para buscar de forma maleável se necessário
-                        contemHora = linhaUpper.includes(horaParte);
-                    }
-                    return contemData && contemHora;
-                } else {
-                    // Logs normais de teste aparecem no dia corrente
-                    const hoje = new Date();
-                    const dataHojeStr = `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
-                    return dataParte === dataHojeStr;
-                }
-            });
-
-            renderizarLogs(logsFiltrados);
-        }
-
-        function limparFiltro() {
-            if(fp) fp.clear();
-            renderizarLogs(todosOsLogs);
-        }
-
-        function minimizarPainel() {
-            filtroContainer.style.display = "none";
-            document.getElementById('btnLog').innerText = "📜 VER HISTÓRICO REMOTO";
-        }
-
         function toggleHistorico() {
-            if (logContainer.style.display === "block" && filtroContainer.style.display === "block") {
+            if (logContainer.style.display === "block") {
                 logContainer.style.display = "none";
-                filtroContainer.style.display = "none";
                 document.getElementById('btnLog').innerText = "📜 VER HISTÓRICO REMOTO";
             } else {
                 logContainer.style.display = "block";
-                filtroContainer.style.display = "block";
                 document.getElementById('btnLog').innerText = "⬅️ FECHAR HISTÓRICO";
-                logContainer.scrollTop = logContainer.scrollHeight;
             }
         }
     </script>
