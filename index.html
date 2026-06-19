@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Monitoramento Remoto</title>
     
-    <!-- LINKS ULTRA-CONFIÁVEIS DO FIREBASE (CDNJS CLOUDFLARE) -->
-    <script src="https://cloudflare.com"></script>
-    <script src="https://cloudflare.com"></script>
-
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background: #121212; color: #e0e0e0; margin: 0; padding: 20px; }
         .card { background: #1e1e1e; padding: 20px; border-top: 5px solid #2ecc71; display: inline-block; margin-top: 30px; width: 95%; max-width: 600px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); transition: all 0.5s ease; }
@@ -33,12 +29,18 @@
         <div class="log-container" id="logContainer">Carregando histórico da nuvem...</div>
     </div>
 
+    <!-- BIBLIOTECAS ATUALIZADAS DO FIREBASE VIA CDN OFICIAL DO GOOGLE -->
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
+
     <script>
+        // Configurações originais validadas com sucesso no banco de dados
         const firebaseConfig = {
             apiKey: "AIzaSyDXqeZodkk0PaTeVvsQZCY410ymNca2xQE", 
             databaseURL: "https://firebaseio.com"
         };
 
+        // Inicialização encapsulada
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
@@ -103,7 +105,6 @@
             }
         }
 
-        // --- ADAPTADO: LÊ STRINGS PURAS OU STRINGS DE SINAL DO RECEPTOR ---
         database.ref('/central/historico').limitToLast(40).on('value', (snapshot) => {
             let logsHTML = "";
             snapshot.forEach((childSnapshot) => {
@@ -111,7 +112,6 @@
                 let mensagemFinal = "";
                 let prefixo = "> ";
 
-                // Se o dado for um objeto estruturado (com chave/valor)
                 if (data && typeof data === 'object') {
                     mensagemFinal = data.mensagem || JSON.stringify(data);
                     if(data.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
@@ -123,12 +123,10 @@
                         prefixo = "[" + d.toLocaleDateString('pt-BR') + " " + d.toLocaleTimeString('pt-BR') + "] " + prefixo;
                     }
                 } 
-                // Se o ESP32 estiver mandando apenas texto cru direto no histórico
                 else if (typeof data === 'string') {
                     mensagemFinal = data;
-                    String(mensagemFinal).toUpperCase();
-                    if (mensagemFinal.includes("FOGO") || mensagemFinal.includes("ALARME")) prefixo = "🚨 [ALARME] ";
-                    else if (mensagemFinal.includes("FALHA") || mensagemFinal.includes("DESCONECT")) prefixo = "⚠️ [FALHA] ";
+                    if (mensagemFinal.toUpperCase().includes("FOGO")) prefixo = "🚨 [ALARME] ";
+                    else if (mensagemFinal.toUpperCase().includes("FALHA")) prefixo = "⚠️ [FALHA] ";
                     else prefixo = "✅ [OK] ";
                 }
 
