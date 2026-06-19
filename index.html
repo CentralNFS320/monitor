@@ -29,7 +29,7 @@
     </div>
 
     <script>
-        // URL base direta do seu Realtime Database para requisições REST
+        // --- URL CORRIGIDA COM "MONITOR" (COM O) SEGUIDO DE /CENTRAL.JSON ---
         const BASE_URL = "https://firebaseio.com";
 
         const card = document.getElementById('mainCard');
@@ -41,9 +41,8 @@
         let statusAtual = "NORMAL";
         let ultimoPingESP = Date.now();
 
-        // Função que busca os dados brutos via API REST (Elimina a necessidade das bibliotecas do Firebase)
         function atualizarPainel() {
-            fetch(`${BASE_URL}.json`)
+            fetch(BASE_URL)
                 .then(response => {
                     if (!response.ok) throw new Error('Erro na rede');
                     return response.json();
@@ -51,16 +50,13 @@
                 .then(data => {
                     if (!data) return;
 
-                    // 1. Sincroniza a mensagem e o status de cor
                     statusAtual = data.tipo_status || "NORMAL";
                     evDiv.innerText = data.status || "Aguardando Notifier...";
                     
-                    // 2. Atualiza a leitura do Heartbeat
                     if (data.heartbeat) {
                         ultimoPingESP = data.heartbeat;
                     }
 
-                    // 3. Processa e renderiza a lista do histórico
                     if (data.historico) {
                         let logsHTML = "";
                         Object.keys(data.historico).slice(-40).forEach(key => {
@@ -89,7 +85,6 @@
                         logContainer.innerText = logsHTML;
                     }
 
-                    // Checa o Watchdog de sinal da placa
                     const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
                     if (tempoSemSinal > 25) {
                         divOffline.style.display = "block";
@@ -131,7 +126,6 @@
             }
         }
 
-        // Executa a busca imediatamente ao abrir e agenda atualizações a cada 3 segundos
         atualizarPainel();
         setInterval(atualizarPainel, 3000);
     </script>
