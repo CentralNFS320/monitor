@@ -8,10 +8,12 @@
         body { font-family: Arial, sans-serif; text-align: center; background: #121212; color: #e0e0e0; margin: 0; padding: 20px; }
         .card { background: #1e1e1e; padding: 20px; border-top: 5px solid #2ecc71; display: inline-block; margin-top: 30px; width: 95%; max-width: 600px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); transition: all 0.5s ease; }
         .tela-central { font-family: 'Courier New', Courier, monospace; background: #050505; color: #2ecc71; padding: 15px; text-align: left; font-size: 16px; line-height: 1.4; border-radius: 6px; border: 1px solid #333; white-space: pre-wrap; min-height: 80px; font-weight: bold; letter-spacing: 0.5px; margin: 20px 0; }
-        .btn { display: inline-block; margin-top: 20px; color: #0af; text-decoration: none; font-weight: bold; border: 1px solid #0af; padding: 12px 24px; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        .btn { display: inline-block; margin-top: 20px; color: #0af; text-decoration: none; font-weight: bold; border: 1px solid #0af; padding: 12px 24px; border-radius: 5px; cursor: pointer; transition: 0.3s; margin: 5px; }
         .btn:hover { background: rgba(0, 170, 255, 0.1); }
         .log-container { background: #000; border: 1px solid #333; padding: 12px; height: 300px; overflow-y: scroll; text-align: left; white-space: pre-wrap; font-family: 'Courier New', monospace; color: #2ecc71; margin-top: 15px; display: none; font-size: 13px; }
         .alerta-offline { background: #721c24; color: #f8d7da; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-weight: bold; display: none; border: 1px solid #f5c6cb; }
+        .config-box { margin-top: 40px; padding: 15px; background: #222; border-radius: 8px; display: inline-block; width: 95%; max-width: 600px; text-align: left; border: 1px solid #444; }
+        .config-box input { width: 95%; padding: 8px; background: #000; border: 1px solid #555; color: #0f0; font-family: monospace; border-radius: 4px; margin-top: 5px; }
         @keyframes piscar { 0% { box-shadow: 0 0 5px #ff3333; background: #1e1e1e; } 100% { box-shadow: 0 0 25px #ff3333; background: #2a0000; } }
     </style>
 </head>
@@ -28,11 +30,21 @@
         <div class="log-container" id="logContainer">Carregando histórico da nuvem...</div>
     </div>
 
+    <br>
+    <!-- CAIXA DE CONFIGURAÇÃO DE URL DIRETO NA TELA -->
+    <div class="config-box">
+        <label style="font-weight: bold; color: #aaa; font-size: 12px;">🔗 URL DE BANCO DE DADOS ATIVA:</label>
+        <input type="text" id="urlInput" value="https://firebaseio.com">
+        <div style="text-align: right; margin-top: 10px;">
+            <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="salvarURL()">🔄 APLICAR E TESTAR</button>
+        </div>
+    </div>
+
     <script>
-        // --- URL CORRIGIDA COM "MONITOR" (COM O) SEGUIDO DE /CENTRAL.JSON ---
-        const BASE_URL = "https://firebaseio.com";
-       
-       
+        // Tenta carregar a URL salva no navegador, se não existir usa a padrão
+        let BASE_URL = localStorage.getItem("firebase_url") || document.getElementById("urlInput").value;
+        document.getElementById("urlInput").value = BASE_URL;
+
         const card = document.getElementById('mainCard');
         const evDiv = document.getElementById('ev');
         const logContainer = document.getElementById('logContainer');
@@ -42,14 +54,27 @@
         let statusAtual = "NORMAL";
         let ultimoPingESP = Date.now();
 
+        function salvarURL() {
+            let novaURL = document.getElementById("urlInput").value.trim();
+            localStorage.setItem("firebase_url", novaURL);
+            BASE_URL = novaURL;
+            txtStatus.innerText = "Status: Atualizando rota de rede...";
+            atualizarPainel();
+        }
+
         function atualizarPainel() {
+            if (!BASE_URL) return;
+            
             fetch(BASE_URL)
                 .then(response => {
                     if (!response.ok) throw new Error('Erro na rede');
                     return response.json();
                 })
                 .then(data => {
-                    if (!data) return;
+                    if (!data) {
+                        txtStatus.innerText = "Status: Conectado, mas o banco de dados está vazio.";
+                        return;
+                    }
 
                     statusAtual = data.tipo_status || "NORMAL";
                     evDiv.innerText = data.status || "Aguardando Notifier...";
