@@ -191,26 +191,29 @@
         }
 
         // --- HISTÓRICO REMOTO COMPLETO ---
-        database.ref('/central/historico').limitToLast(40).on('value', (snapshot) => {
-            let logsHTML = "";
-            snapshot.forEach((childSnapshot) => {
-                const data = childSnapshot.val();
-                let prefixo = "> ";
-                
-                if(data.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
-                else if(data.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
-                else prefixo = "✅ [OK] ";
-                
-                let dataFormatada = "";
-                if (data.timestamp) {
-                    const d = new Date(data.timestamp);
-                    dataFormatada = "[" + d.toLocaleDateString('pt-BR') + " " + d.toLocaleTimeString('pt-BR') + "] ";
-                }
-                
-                logsHTML = dataFormatada + prefixo + data.mensagem + "\n" + logsHTML;
-            });
-            logContainer.innerText = logsHTML || "Nenhum histórico disponível na nuvem.";
-        });
+      // --- CORREÇÃO DE LEITURA DO HISTÓRICO ---
+database.ref('/central/historico').limitToLast(40).on('value', (snapshot) => {
+    let logsHTML = "";
+    snapshot.forEach((childSnapshot) => {
+        const data = childSnapshot.val();
+        let prefixo = "> ";
+        
+        // Alinhado exatamente com o "FOGO" e "FALHA" que o ESP32 envia
+        if(data.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
+        else if(data.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
+        else prefixo = "✅ [OK] ";
+        
+        let dataFormatada = "";
+        if (data.timestamp) {
+            const d = new Date(data.timestamp);
+            dataFormatada = "[" + d.toLocaleDateString('pt-BR') + " " + d.toLocaleTimeString('pt-BR') + "] ";
+        }
+        
+        logsHTML = dataFormatada + prefixo + data.mensagem + "\n" + logsHTML;
+    });
+    logContainer.innerText = logsHTML || "Nenhum histórico disponível na nuvem.";
+});
+
 
         function toggleHistorico() {
             if (logContainer.style.display === "block") {
