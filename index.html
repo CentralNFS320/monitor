@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Monitoramento Remoto</title>
-    
-    <!-- CARREGAMENTO ANTECIPADO DO FIREBASE NO TOPO DA PÁGINA -->
-    <script src="https://gstatic.com"></script>
-    <script src="https://gstatic.com"></script>
-
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background: #121212; color: #e0e0e0; margin: 0; padding: 20px; }
         .card { background: #1e1e1e; padding: 20px; border-top: 5px solid #2ecc71; display: inline-block; margin-top: 30px; width: 95%; max-width: 600px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); transition: all 0.5s ease; }
@@ -33,18 +28,19 @@
         <div class="log-container" id="logContainer">Carregando histórico da nuvem...</div>
     </div>
 
+    <!-- CARREGAMENTO SEGURO VIA CDN VERSÃO 8 -->
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
+
     <script>
-        // --- CONFIGURAÇÃO DO SEU PROJETO NO FIREBASE ---
         const firebaseConfig = {
             apiKey: "AIzaSyDXqeZodkk0PaTeVvsQZCY410ymNca2xQE", 
             databaseURL: "https://firebaseio.com"
         };
 
-        // Inicializa o Firebase (Agora as bibliotecas já existem na memória)
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // Mapeamento dos elementos HTML
         const card = document.getElementById('mainCard');
         const evDiv = document.getElementById('ev');
         const logContainer = document.getElementById('logContainer');
