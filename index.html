@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Monitoramento Remoto</title>
     
-    <!-- LINKS ALTERNATIVOS DA CLOUDFLARE (NUNCA FALHAM OU BLOQUEIAM) -->
+    <!-- LINKS ULTRA-CONFIÁVEIS DO FIREBASE (CDNJS CLOUDFLARE) -->
     <script src="https://cloudflare.com"></script>
     <script src="https://cloudflare.com"></script>
 
@@ -103,20 +103,36 @@
             }
         }
 
+        // --- ADAPTADO: LÊ STRINGS PURAS OU STRINGS DE SINAL DO RECEPTOR ---
         database.ref('/central/historico').limitToLast(40).on('value', (snapshot) => {
             let logsHTML = "";
             snapshot.forEach((childSnapshot) => {
                 const data = childSnapshot.val();
+                let mensagemFinal = "";
                 let prefixo = "> ";
-                if(data.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
-                else if(data.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
-                else prefixo = "✅ [OK] ";
-                let dataFormatada = "";
-                if (data.timestamp) {
-                    const d = new Date(data.timestamp);
-                    dataFormatada = "[" + d.toLocaleDateString('pt-BR') + " " + d.toLocaleTimeString('pt-BR') + "] ";
+
+                // Se o dado for um objeto estruturado (com chave/valor)
+                if (data && typeof data === 'object') {
+                    mensagemFinal = data.mensagem || JSON.stringify(data);
+                    if(data.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
+                    else if(data.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
+                    else prefixo = "✅ [OK] ";
+                    
+                    if (data.timestamp) {
+                        const d = new Date(data.timestamp);
+                        prefixo = "[" + d.toLocaleDateString('pt-BR') + " " + d.toLocaleTimeString('pt-BR') + "] " + prefixo;
+                    }
+                } 
+                // Se o ESP32 estiver mandando apenas texto cru direto no histórico
+                else if (typeof data === 'string') {
+                    mensagemFinal = data;
+                    String(mensagemFinal).toUpperCase();
+                    if (mensagemFinal.includes("FOGO") || mensagemFinal.includes("ALARME")) prefixo = "🚨 [ALARME] ";
+                    else if (mensagemFinal.includes("FALHA") || mensagemFinal.includes("DESCONECT")) prefixo = "⚠️ [FALHA] ";
+                    else prefixo = "✅ [OK] ";
                 }
-                logsHTML = dataFormatada + prefixo + (data.mensagem || "") + "\n" + logsHTML;
+
+                logsHTML = prefixo + mensagemFinal + "\n" + logsHTML;
             });
             logContainer.innerText = logsHTML || "Nenhum histórico disponível na nuvem.";
         });
