@@ -71,7 +71,6 @@
             display: none;
             font-size: 13px;
         }
-        /* Layout de Alerta de Queda de Sinal */
         .alerta-offline {
             background: #721c24;
             color: #f8d7da;
@@ -79,7 +78,7 @@
             border-radius: 5px;
             margin-bottom: 15px;
             font-weight: bold;
-            display: none; /* Escondido por padrão */
+            display: none;
             border: 1px solid #f5c6cb;
         }
         @keyframes piscar {
@@ -94,10 +93,8 @@
         <h1>CF SISTEMAS</h1>
         <h4 style="color:#888; margin-top:-10px;">Monitoramento NFS-320 (Remoto)</h4>
         
-        <!-- Faixa de aviso de erro de conexão -->
         <div id="statusConexao" class="alerta-offline">🚨 ATENÇÃO: PERDA DE COMUNICAÇÃO COM O MÓDULO ESP32!</div>
         
-        <!-- Bloco replicador de tela -->
         <div id="ev" class="tela-central">Conectando ao Firebase...</div>
         
         <p style="color:#666; font-size:12px;" id="txtStatus">Status: Sincronizando com a nuvem...</p>
@@ -107,7 +104,7 @@
         <div class="log-container" id="logContainer">Carregando histórico da nuvem...</div>
     </div>
 
-    <!-- CORRIGIDO: Scripts oficiais integrados com a sua arquitetura do Firebase -->
+    <!-- Bibliotecas oficiais do Firebase Web (versão estável 8.x) -->
     <script src="https://gstatic.com"></script>
     <script src="https://gstatic.com"></script>
 
@@ -115,7 +112,7 @@
         // --- CONFIGURAÇÃO DO SEU PROJETO NO FIREBASE ---
         const firebaseConfig = {
             apiKey: "AIzaSyDXqeZodkk0PaTeVvsQZCY410ymNca2xQE", 
-            databaseURL: "https://munitor-de-alarme-default-rtdb.firebaseio.com"
+            databaseURL: "https://firebaseio.com"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -129,37 +126,30 @@
 
         let statusAtual = "NORMAL";
         let ultimoPingESP = Date.now();
-        let offsetTempoServidor = 0; // Armazena a diferença de relógio do PC com o Google
+        let offsetTempoServidor = 0;
 
-        // Calcula a diferença de relógio entre o computador local e o servidor Firebase
         database.ref(".info/serverTimeOffset").on("value", (snapshot) => {
             offsetTempoServidor = snapshot.val() || 0;
         });
 
-        // 1. Escuta a classificação do status
         database.ref('/central/tipo_status').on('value', (snapshot) => {
             statusAtual = snapshot.val() || "NORMAL";
             atualizarLayoutCores();
         });
 
-        // 2. Escuta o texto bruto enviado
         database.ref('/central/status').on('value', (snapshot) => {
             const msg = snapshot.val() || "Aguardando Notifier...";
             evDiv.innerText = msg;
-            
-            // Força a atualização do ping ao receber texto direto
             ultimoPingESP = Date.now() + offsetTempoServidor; 
             divOffline.style.display = "none";
         });
 
-        // 3. CORRIGIDO: Escuta o Heartbeat oficial do ESP32 para monitorar queda de energia
         database.ref('/central/heartbeat').on('value', (snapshot) => {
             if (snapshot.exists()) {
                 ultimoPingESP = snapshot.val();
             }
         });
 
-        // Verifica a cada 3 segundos se o último sinal recebido tem mais de 25 segundos
         setInterval(() => {
             const tempoAtualServidor = Date.now() + offsetTempoServidor;
             const tempoSemSinal = (tempoAtualServidor - ultimoPingESP) / 1000;
@@ -167,8 +157,8 @@
             if (tempoSemSinal > 25) { 
                 divOffline.style.display = "block";
                 divOffline.innerText = "🚨 ALERTA: DISPOSITIVO OFFLINE HÁ " + Math.round(tempoSemSinal) + " SEGUNDOS!";
-                evDiv.innerText = "SISTEMA DESCONECTADO\n(ESP32 SEM ALIMENTAÇÃO OU SEM WI-FI)";
-                evDiv.style.color = "#f1c40f"; // Alerta Amarelo de Erro Geral
+                evDiv.innerText = "SISTEMA DESCONECTADO\n(ESP32 SEM ALIMENTAÇÃO OS WI-FI)";
+                evDiv.style.color = "#f1c40f"; 
                 card.style.borderTopColor = "#f1c40f";
                 card.style.animation = "none";
                 txtStatus.innerText = "Status: Indisponível | Sem sinal da placa";
@@ -179,7 +169,6 @@
         }, 3000);
 
         function atualizarLayoutCores() {
-            // Se o tempo sem sinal estourou o limite, ignora a triagem comum
             const tempoAtualServidor = Date.now() + offsetTempoServidor;
             const tempoSemSinal = (tempoAtualServidor - ultimoPingESP) / 1000;
             if (tempoSemSinal > 25) return;
@@ -201,18 +190,26 @@
             }
         }
 
-        // 4. Lista do Histórico (Corrigido as crases de Template Strings removidas por erro)
+        // --- HISTÓRICO REMOTO COMPLETO ---
         database.ref('/central/historico').limitToLast(40).on('value', (snapshot) => {
             let logsHTML = "";
             snapshot.forEach((childSnapshot) => {
                 const data = childSnapshot.val();
                 let prefixo = "> ";
+                
                 if(data.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
-                if(data.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
-                logsHTML += prefixo + data.mensagem + "\n------------------------\n";
+                else if(data.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
+                else prefixo = "✅ [OK] ";
+                
+                let dataFormatada = "";
+                if (data.timestamp) {
+                    const d = new Date(data.timestamp);
+                    dataFormatada = "[" + d.toLocaleDateString('pt-BR') + " " + d.toLocaleTimeString('pt-BR') + "] ";
+                }
+                
+                logsHTML = dataFormatada + prefixo + data.mensagem + "\n" + logsHTML;
             });
-            logContainer.innerText = logsHTML || "Sem novos logs registrados.";
-            logContainer.scrollTop = logContainer.scrollHeight;
+            logContainer.innerText = logsHTML || "Nenhum histórico disponível na nuvem.";
         });
 
         function toggleHistorico() {
@@ -221,7 +218,7 @@
                 document.getElementById('btnLog').innerText = "📜 VER HISTÓRICO REMOTO";
             } else {
                 logContainer.style.display = "block";
-                document.getElementById('btnLog').innerText = "⬅️ FECHAR HISTÓRICO";
+                document.getElementById('btnLog').innerText = "🙈 FECHAR HISTÓRICO";
             }
         }
     </script>
