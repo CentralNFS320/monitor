@@ -106,7 +106,8 @@
     </div>
 
     <script>
-        const URL_BASE = "https://firebaseio.com";
+        // URL definida exatamente como você especificou, sem barras ou nós no final
+        const URL_BASE = "https://munitor-de-alarme-default-rtdb.firebaseio.com";
         
         const card = document.getElementById('mainCard');
         const evDiv = document.getElementById('ev');
@@ -117,32 +118,32 @@
         let statusAtual = "NORMAL";
         let ultimoPingESP = Date.now();
 
-        // --- CONEXÃO STREAM EM TEMPO REAL (Gasta menos banda e é instantâneo) ---
+        // --- CONEXÃO STREAM EM TEMPO REAL ---
         function iniciarStreamRealtime() {
-            const eventSource = new EventSource(`${URL_BASE}.json`);
+            // Concatena dinamicamente a rota interna /central necessária para ler os dados do ESP32
+            const eventSource = new EventSource(`${URL_BASE}/central.json`);
 
             eventSource.addEventListener('put', function(e) {
                 const json = JSON.parse(e.data);
-                if (!json || !json.data) return;
+                if (!json) return;
 
-                // O Firebase retorna a estrutura completa no primeiro push ou nós isolados nas mudanças
-                const base = json.path === "/" ? json.data : json.data;
                 const path = json.path;
+                const data = json.data;
 
-                // Processamento inteligente dependendo de qual dado mudou no Firebase
                 if (path === "/" || path === "") {
-                    statusAtual = base.tipo_status || "NORMAL";
-                    evDiv.innerText = base.status || "Aguardando evento...";
-                    ultimoPingESP = Number(base.heartbeat || Date.now());
-                    if (base.historico) atualizarHistoricoHTML(base.historico);
+                    if (data) {
+                        statusAtual = data.tipo_status || "NORMAL";
+                        evDiv.innerText = data.status || data.mensagem || "Aguardando evento...";
+                        ultimoPingESP = Number(data.heartbeat || Date.now());
+                        if (data.historico) atualizarHistoricoHTML(data.historico);
+                    }
                 } else if (path === "/status") {
-                    evDiv.innerText = json.data;
+                    evDiv.innerText = data;
                 } else if (path === "/tipo_status") {
-                    statusAtual = json.data;
+                    statusAtual = data;
                 } else if (path === "/heartbeat") {
-                    ultimoPingESP = Number(json.data);
+                    ultimoPingESP = Number(data);
                 } else if (path.startsWith("/historico")) {
-                    // Recarrega o histórico completo para garantir a ordenação se houver nova inserção
                     buscarHistoricoCompleto();
                 }
 
@@ -159,7 +160,7 @@
         }
 
         function buscarHistoricoCompleto() {
-            fetch(`${URL_BASE}/historico.json`)
+            fetch(`${URL_BASE}/central/historico.json`)
                 .then(r => r.json())
                 .then(historico => {
                     if (historico) atualizarHistoricoHTML(historico);
@@ -168,7 +169,6 @@
 
         function atualizarHistoricoHTML(historico) {
             let logsHTML = "";
-            // Inverte a ordem das chaves para exibir o evento mais recente sempre no TOPO
             Object.keys(historico).reverse().forEach((key) => {
                 const logItem = historico[key];
                 let prefixo = "> ";
@@ -220,7 +220,6 @@
             }
         }
 
-        // Watchdog executado em segundo plano a cada 5 segundos apenas para conferir a atividade da placa
         setInterval(() => {
             const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
             if (tempoSemSinal > 35) {
@@ -234,7 +233,6 @@
             }
         }, 5000);
 
-        // Inicializa o Stream em Tempo Real
         iniciarStreamRealtime();
     </script>
 </body>
