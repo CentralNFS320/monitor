@@ -3,157 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Monitoramento Remoto</title>
+    <title>CF SISTEMAS - Teste Rápido</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background: #121212; color: #e0e0e0; margin: 0; padding: 20px; }
-        .card { background: #1e1e1e; padding: 20px; border-top: 5px solid #2ecc71; display: inline-block; margin-top: 30px; width: 95%; max-width: 600px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); transition: all 0.5s ease; }
-        .tela-central { font-family: 'Courier New', Courier, monospace; background: #050505; color: #2ecc71; padding: 15px; text-align: left; font-size: 16px; line-height: 1.4; border-radius: 6px; border: 1px solid #333; white-space: pre-wrap; min-height: 80px; font-weight: bold; letter-spacing: 0.5px; margin: 20px 0; }
-        .btn { display: inline-block; margin-top: 20px; color: #0af; text-decoration: none; font-weight: bold; border: 1px solid #0af; padding: 12px 24px; border-radius: 5px; cursor: pointer; transition: 0.3s; margin: 5px; }
-        .btn:hover { background: rgba(0, 170, 255, 0.1); }
-        .log-container { background: #000; border: 1px solid #333; padding: 12px; height: 300px; overflow-y: scroll; text-align: left; white-space: pre-wrap; font-family: 'Courier New', monospace; color: #2ecc71; margin-top: 15px; display: none; font-size: 13px; }
-        .alerta-offline { background: #721c24; color: #f8d7da; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-weight: bold; display: none; border: 1px solid #f5c6cb; }
-        .config-box { margin-top: 40px; padding: 15px; background: #222; border-radius: 8px; display: inline-block; width: 95%; max-width: 600px; text-align: left; border: 1px solid #444; }
-        .config-box input { width: 95%; padding: 8px; background: #000; border: 1px solid #555; color: #0f0; font-family: monospace; border-radius: 4px; margin-top: 5px; }
-        @keyframes piscar { 0% { box-shadow: 0 0 5px #ff3333; background: #1e1e1e; } 100% { box-shadow: 0 0 25px #ff3333; background: #2a0000; } }
+        body { font-family: monospace; background: #121212; color: #e0e0e0; text-align: center; padding: 20px; }
+        .painel { background: #000; border: 2px solid #2ecc71; padding: 20px; display: inline-block; width: 90%; max-width: 500px; border-radius: 8px; margin-top: 50px; }
+        .status-texto { font-size: 20px; color: #2ecc71; font-weight: bold; margin: 20px 0; white-space: pre-wrap; }
+        .log-box { background: #050505; border: 1px solid #333; padding: 10px; height: 150px; overflow-y: scroll; text-align: left; font-size: 12px; color: #888; }
     </style>
 </head>
 <body>
 
-    <div class="card" id="mainCard">
-        <h1>CF SISTEMAS</h1>
-        <h4 style="color:#888; margin-top:-10px;">Monitoramento NFS-320 (Remoto)</h4>
-        <div id="statusConexao" class="alerta-offline">🚨 ATENÇÃO: PERDA DE COMUNICAÇÃO COM O MÓDULO ESP32!</div>
-        <div id="ev" class="tela-central">Conectando ao Firebase...</div>
-        <p style="color:#666; font-size:12px;" id="txtStatus">Status: Sincronizando com a nuvem...</p>
+    <div class="painel">
+        <h2>CF SISTEMAS - MONITORAMENTO</h2>
         <hr style="border-color: #222;">
-        <div class="btn" id="btnLog" onclick="toggleHistorico()">📜 VER HISTÓRICO REMOTO</div>
-        <div class="log-container" id="logContainer">Carregando histórico da nuvem...</div>
-    </div>
-
-    <br>
-    <!-- CAIXA DE CONFIGURAÇÃO DE URL DIRETO NA TELA -->
-    <div class="config-box">
-        <label style="font-weight: bold; color: #aaa; font-size: 12px;">🔗 URL DE BANCO DE DADOS ATIVA:</label>
-        <input type="text" id="urlInput" value="https://firebaseio.com">
-        <div style="text-align: right; margin-top: 10px;">
-            <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="salvarURL()">🔄 APLICAR E TESTAR</button>
-        </div>
+        <div id="msgCentral" class="status-texto">Conectando ao Firebase...</div>
+        <p id="infoRede" style="font-size: 11px; color: #555;">Iniciando varredura...</p>
+        
+        <h4 style="text-align: left; margin-bottom: 5px; color: #aaa;">📜 ÚLTIMOS LOGS:</h4>
+        <div id="logBox" class="log-box">Aguardando dados...</div>
     </div>
 
     <script>
-        // Tenta carregar a URL salva no navegador, se não existir usa a padrão
-        let BASE_URL = localStorage.getItem("firebase_url") || document.getElementById("urlInput").value;
-        document.getElementById("urlInput").value = BASE_URL;
+        // URL 100% cravada no seu projeto oficial do Realtime Database
+        const URL_FIREBASE = "https://firebaseio.com";
 
-        const card = document.getElementById('mainCard');
-        const evDiv = document.getElementById('ev');
-        const logContainer = document.getElementById('logContainer');
-        const txtStatus = document.getElementById('txtStatus');
-        const divOffline = document.getElementById('statusConexao');
-
-        let statusAtual = "NORMAL";
-        let ultimoPingESP = Date.now();
-
-        function salvarURL() {
-            let novaURL = document.getElementById("urlInput").value.trim();
-            localStorage.setItem("firebase_url", novaURL);
-            BASE_URL = novaURL;
-            txtStatus.innerText = "Status: Atualizando rota de rede...";
-            atualizarPainel();
-        }
-
-        function atualizarPainel() {
-            if (!BASE_URL) return;
-            
-            fetch(BASE_URL)
-                .then(response => {
-                    if (!response.ok) throw new Error('Erro na rede');
-                    return response.json();
+        function testarConexao() {
+            fetch(URL_FIREBASE)
+                .then(res => {
+                    if (!res.ok) throw new Error("Erro HTTP: " + res.status);
+                    return res.json();
                 })
                 .then(data => {
                     if (!data) {
-                        txtStatus.innerText = "Status: Conectado, mas o banco de dados está vazio.";
+                        document.getElementById("msgCentral").innerText = "BANCO DE DADOS VAZIO";
+                        document.getElementById("msgCentral").style.color = "#f1c40f";
                         return;
                     }
 
-                    statusAtual = data.tipo_status || "NORMAL";
-                    evDiv.innerText = data.status || "Aguardando Notifier...";
+                    // Exibe a mensagem atual da NFS-320
+                    document.getElementById("msgCentral").innerText = data.status || "Sem mensagem enviada";
+                    document.getElementById("msgCentral").style.color = (data.tipo_status === "FALHA") ? "#f1c40f" : "#2ecc71";
                     
-                    if (data.heartbeat) {
-                        ultimoPingESP = data.heartbeat;
-                    }
+                    document.getElementById("infoRede").innerText = "Sincronizado com sucesso! Classe: " + (data.tipo_status || "NORMAL");
 
+                    // Monta o histórico simplificado
                     if (data.historico) {
-                        let logsHTML = "";
-                        Object.keys(data.historico).slice(-40).forEach(key => {
+                        let htmlLogs = "";
+                        Object.keys(data.historico).slice(-10).forEach(key => {
                             const item = data.historico[key];
-                            let mensagemFinal = "";
-                            let prefixo = "> ";
-
-                            if (item && typeof item === 'object') {
-                                mensagemFinal = item.mensagem || JSON.stringify(item);
-                                if (item.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
-                                else if (item.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
-                                else prefixo = "✅ [OK] ";
-                                
-                                if (item.timestamp) {
-                                    const d = new Date(item.timestamp);
-                                    prefixo = "[" + d.toLocaleDateString('pt-BR') + " " + d.toLocaleTimeString('pt-BR') + "] " + prefixo;
-                                }
-                            } else if (typeof item === 'string') {
-                                mensagemFinal = item;
-                                if (mensagemFinal.toUpperCase().includes("FOGO")) prefixo = "🚨 [ALARME] ";
-                                else if (mensagemFinal.toUpperCase().includes("FALHA") || mensagemFinal.toUpperCase().includes("REINICIANDO")) prefixo = "⚠️ [FALHA] ";
-                                else prefixo = "✅ [OK] ";
+                            if (typeof item === 'string') {
+                                htmlLogs = "> " + item + "\n" + htmlLogs;
+                            } else if (item && item.mensagem) {
+                                htmlLogs = "> " + item.mensagem + "\n" + htmlLogs;
                             }
-                            logsHTML = prefixo + mensagemFinal + "\n" + logsHTML;
                         });
-                        logContainer.innerText = logsHTML;
-                    }
-
-                    const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
-                    if (tempoSemSinal > 25) {
-                        divOffline.style.display = "block";
-                        divOffline.innerText = "🚨 ALERTA: DISPOSITIVO OFFLINE HÁ " + Math.round(tempoSemSinal) + " SEGUNDOS!";
-                        evDiv.innerText = "SISTEMA DESCONECTADO\n(ESP32 SEM ALIMENTAÇÃO OU WI-FI)";
-                        evDiv.style.color = "#f1c40f";
-                        card.style.borderTopColor = "#f1c40f";
-                        card.style.animation = "none";
-                        txtStatus.innerText = "Status: Indisponível | Sem sinal da placa";
-                    } else {
-                        divOffline.style.display = "none";
-                        atualizarLayoutCores();
+                        document.getElementById("logBox").innerText = htmlLogs;
                     }
                 })
-                .catch(error => {
-                    console.error('Falha ao buscar dados:', error);
-                    txtStatus.innerText = "Status: Erro de conexão com o banco de dados";
+                .catch(err => {
+                    console.error(err);
+                    document.getElementById("msgCentral").innerText = "ERRO DE CONEXÃO";
+                    document.getElementById("msgCentral").style.color = "#ff3333";
+                    document.getElementById("infoRede").innerText = "Verifique se as Regras do Firebase estão públicas (true).";
                 });
         }
 
-        function atualizarLayoutCores() {
-            txtStatus.innerText = "Status: Monitoramento Ativo | Classe: " + statusAtual;
-            if (statusAtual === "FOGO") {
-                evDiv.style.color = "#ff3333"; card.style.borderTopColor = "#ff3333"; card.style.animation = "piscar 0.8s infinite alternate";
-            } else if (statusAtual === "FALHA") {
-                evDiv.style.color = "#f1c40f"; card.style.borderTopColor = "#f1c40f"; card.style.animation = "none";
-            } else {
-                evDiv.style.color = "#2ecc71"; card.style.borderTopColor = "#2ecc71"; card.style.animation = "none";
-            }
-        }
-
-        function toggleHistorico() {
-            if (logContainer.style.display === "block") {
-                logContainer.style.display = "none";
-                document.getElementById('btnLog').innerText = "📜 VER HISTÓRICO REMOTO";
-            } else {
-                logContainer.style.display = "block";
-                document.getElementById('btnLog').innerText = "🙈 FECHAR HISTÓRICO";
-            }
-        }
-
-        atualizarPainel();
-        setInterval(atualizarPainel, 3000);
+        // Executa na hora e atualiza a cada 3 segundos
+        testarConexao();
+        setInterval(testarConexao, 3000);
     </script>
 </body>
 </html>
