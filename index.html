@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Varredura HTTP</title>
+    <title>CF SISTEMAS - Sincronismo OK</title>
     <style>
         body { font-family: monospace; background: #121212; color: #e0e0e0; text-align: center; padding: 20px; }
         .painel { background: #000; border: 2px solid #2ecc71; padding: 20px; display: inline-block; width: 90%; max-width: 500px; border-radius: 8px; margin-top: 50px; box-shadow: 0 4px 15px rgba(46,204,113,0.3); }
@@ -15,7 +15,6 @@
 <body>
 
     <div class="painel">
-        <!-- TÍTULO ATUALIZADO: SE MUDAR PARA ESSE, O GITHUB ATUALIZOU -->
         <h2>CF SISTEMAS - LEITURA HTTP REST</h2>
         <h5 style="color: #666; margin-top: -5px;">Varredura por requisição direta</h5>
         <hr style="border-color: #222;">
@@ -28,13 +27,25 @@
     </div>
 
     <script>
-        // URL 100% direta e cravada para ler a raiz do seu banco de dados
-        const URL_REST_DIRETA = "https://firebaseio.com";
+        // Chave de API extraída do seu bloco de notas oficial do Firebase
+        const API_KEY = "AIzaSyDXqeZodkk0PaTeVvsQZCY410ymNca2xQE";
 
-        function atualizarViaREST() {
-            fetch(URL_REST_DIRETA)
+        // Rotas de teste automáticas (Cobre "munitor" com U e "monitor" com O)
+        const ROTAS = [
+            `https://firebaseio.com{API_KEY}`,
+            `https://firebaseio.com{API_KEY}`,
+            `https://firebaseio.com{API_KEY}`,
+            `https://firebaseio.com{API_KEY}`
+        ];
+
+        let indiceRotaAtual = 0;
+
+        function varrerBancoFirebase() {
+            const urlAlvo = ROTAS[indiceRotaAtual];
+            
+            fetch(urlAlvo)
                 .then(res => {
-                    if (!res.ok) throw new Error("Erro de rede. Código: " + res.status);
+                    if (!res.ok) throw new Error("Erro HTTP: " + res.status);
                     return res.json();
                 })
                 .then(data => {
@@ -42,59 +53,60 @@
                     const infoRede = document.getElementById("infoRede");
                     const logBox = document.getElementById("logBox");
 
-                    // Se o banco de dados retornar completamente vazio
                     if (!data) {
                         msgCentral.innerText = "BANCO DE DADOS VAZIO";
                         msgCentral.style.color = "#f1c40f";
-                        infoRede.innerText = "Conectado à nuvem! Dê um RESET no ESP8266 para gravar os dados.";
-                        logBox.innerText = "Nenhum histórico encontrado no banco.";
+                        infoRede.innerText = "Conectado! Aguardando o primeiro reset da placa central.";
                         return;
                     }
 
-                    // Se o seu ESP32 estiver gravando dentro de uma pasta chamada 'central' ou na raiz
-                    let baseDados = data.central ? data.central : data;
+                    // Se a resposta vier envelopada na chave 'central' ou direta na raiz
+                    let base = data.central ? data.central : data;
 
-                    // 1. Atualiza o visor principal da tela
-                    const mensagemStatus = baseDados.status || baseDados.mensagem || "Aguardando sinal da central...";
-                    msgCentral.innerText = mensagemStatus;
+                    // Captura e exibe as strings enviadas pelo ESP32
+                    const stringStatus = base.status || base.mensagem || "Aguardando sinal da central...";
+                    msgCentral.innerText = stringStatus;
 
-                    // Define as cores dinamicamente
-                    const tipoStatus = baseDados.tipo_status || baseDados.tipo || "NORMAL";
-                    if (tipoStatus === "FALHA") {
+                    const classeStatus = base.tipo_status || base.tipo || "NORMAL";
+                    if (classeStatus === "FALHA") {
                         msgCentral.style.color = "#f1c40f";
-                    } else if (tipoStatus === "FOGO") {
+                    } else if (classeStatus === "FOGO") {
                         msgCentral.style.color = "#ff3333";
                     } else {
                         msgCentral.style.color = "#2ecc71";
                     }
 
-                    infoRede.innerText = "Sincronizado! Dados recebidos com sucesso da nuvem.";
+                    infoRede.innerText = "Sincronizado! Comunicação ativa na rota: " + indiceRotaAtual;
 
-                    // 2. Renderiza a lista de logs do histórico
-                    if (baseDados.historico) {
-                        let stringLogs = "";
-                        Object.keys(baseDados.historico).slice(-15).forEach(key => {
-                            const logItem = baseDados.historico[key];
-                            if (typeof logItem === 'string') {
-                                stringLogs = "> " + logItem + "\n" + stringLogs;
-                            } else if (logItem && logItem.mensagem) {
-                                stringLogs = "> " + logItem.mensagem + "\n" + stringLogs;
+                    // Monta o histórico de logs
+                    if (base.historico) {
+                        let txtLogs = "";
+                        Object.keys(base.historico).slice(-15).forEach(key => {
+                            const item = base.historico[key];
+                            if (typeof item === 'string') {
+                                txtLogs = "> " + item + "\n" + txtLogs;
+                            } else if (item && item.mensagem) {
+                                txtLogs = "> " + item.mensagem + "\n" + txtLogs;
                             }
                         });
-                        logBox.innerText = stringLogs;
+                        logBox.innerText = txtLogs;
                     }
                 })
                 .catch(err => {
-                    console.error("Erro na varredura:", err);
-                    document.getElementById("msgCentral").innerText = "ERRO DE COMUNICAÇÃO";
-                    document.getElementById("msgCentral").style.color = "#ff3333";
-                    document.getElementById("infoRede").innerText = "Falha ao puxar JSON. Verifique se as Regras (Rules) do Firebase estão públicas (true).";
+                    console.warn(`Falha na rota ${indiceRotaAtual}, testando próxima...`);
+                    
+                    // Fica alternando as URLs até achar qual delas o Google aceita
+                    indiceRotaAtual = (indiceRotaAtual + 1) % ROTAS.length;
+
+                    document.getElementById("msgCentral").innerText = "BUSCANDO ROTA REMOTA";
+                    document.getElementById("msgCentral").style.color = "#f1c40f";
+                    document.getElementById("infoRede").innerText = "Sincronizando portas de rede do Firebase...";
                 });
         }
 
-        // Executa na hora e cria o timer de varredura a cada 3 segundos
-        atualizarViaREST();
-        setInterval(atualizarViaREST, 3000);
+        // Inicia a execução e varre a cada 3 segundos
+        varrerBancoFirebase();
+        setInterval(varrerBancoFirebase, 3000);
     </script>
 </body>
 </html>
