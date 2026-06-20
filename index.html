@@ -23,7 +23,7 @@
             max-width: 600px;
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.7);
-            transition: all 0.5s ease;
+            transition: all 0.4s ease;
         }
         .tela-central {
             font-family: 'Courier New', Courier, monospace;
@@ -96,19 +96,18 @@
         
         <div id="statusConexao" class="alerta-offline">🚨 ATENÇÃO: PERDA DE COMUNICAÇÃO COM O MÓDULO ESP32!</div>
         
-        <div id="ev" class="tela-central">Iniciando Varredura...</div>
+        <div id="ev" class="tela-central">Conectando ao servidor em tempo real...</div>
         
         <p style="color:#666; font-size:12px;" id="txtStatus">Status: Sincronizando com a nuvem...</p>
         <hr style="border-color: #222;">
         
         <div class="btn" id="btnLog" onclick="toggleHistorico()">📜 VER HISTÓRICO REMOTO</div>
-        <div class="log-container" id="logContainer">Carregando histórico da nuvem...</div>
+        <div class="log-container" id="logContainer">Aguardando dados...</div>
     </div>
 
     <script>
-        // URL ajustada exatamente com a raiz do seu banco + a rota da pasta da central
-          const URL_REST = "https://munitor-de-alarme-default-rtdb.firebaseio.com/central.json";
-
+        const URL_BASE = "https://munitor-de-alarme-default-rtdb.firebaseio.com";
+        
         const card = document.getElementById('mainCard');
         const evDiv = document.getElementById('ev');
         const logContainer = document.getElementById('logContainer');
@@ -118,81 +117,78 @@
         let statusAtual = "NORMAL";
         let ultimoPingESP = Date.now();
 
-        function atualizarPainelREST() {
-            fetch(URL_REST)
-                .then(response => {
-                    if (!response.ok) throw new Error('Erro de conexão HTTP');
-                    return response.json();
-                })
-                .then(base => {
-                    if (!base) {
-                        evDiv.innerText = "BANCO DE DADOS VAZIO\n(AGUARDANDO EVENTOS DO RECEPTOR)";
-                        evDiv.style.color = "#f1c40f";
-                        card.style.borderTopColor = "#f1c40f";
-                        txtStatus.innerText = "Status: Conectado | Sem registros";
-                        return;
-                    }
+        // --- CONEXÃO STREAM EM TEMPO REAL (Gasta menos banda e é instantâneo) ---
+        function iniciarStreamRealtime() {
+            const eventSource = new EventSource(`${URL_BASE}.json`);
 
-                    // Lê as variáveis do nó mapeadas pelo ESP32
+            eventSource.addEventListener('put', function(e) {
+                const json = JSON.parse(e.data);
+                if (!json || !json.data) return;
+
+                // O Firebase retorna a estrutura completa no primeiro push ou nós isolados nas mudanças
+                const base = json.path === "/" ? json.data : json.data;
+                const path = json.path;
+
+                // Processamento inteligente dependendo de qual dado mudou no Firebase
+                if (path === "/" || path === "") {
                     statusAtual = base.tipo_status || "NORMAL";
                     evDiv.innerText = base.status || "Aguardando evento...";
-                    
                     ultimoPingESP = Number(base.heartbeat || Date.now());
-                    divOffline.style.display = "none";
+                    if (base.historico) atualizarHistoricoHTML(base.historico);
+                } else if (path === "/status") {
+                    evDiv.innerText = json.data;
+                } else if (path === "/tipo_status") {
+                    statusAtual = json.data;
+                } else if (path === "/heartbeat") {
+                    ultimoPingESP = Number(json.data);
+                } else if (path.startsWith("/historico")) {
+                    // Recarrega o histórico completo para garantir a ordenação se houver nova inserção
+                    buscarHistoricoCompleto();
+                }
 
-                    atualizarLayoutCores();
+                divOffline.style.display = "none";
+                atualizarLayoutCores();
+            });
 
-                    // Renderiza o histórico de eventos vindos do Firebase
-                    if (base.historico) {
-                        let logsHTML = "";
-                        Object.keys(base.historico).forEach((key) => {
-                            const logItem = base.historico[key];
-                            let prefixo = "> ";
-                            let mensagemFinal = "";
-                            
-                            if (logItem && typeof logItem === 'object') {
-                                if(logItem.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
-                                if(logItem.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
-                                mensagemFinal = logItem.mensagem || JSON.stringify(logItem);
-                            } else if (typeof logItem === 'string') {
-                                if (logItem.toUpperCase().includes("FOGO")) prefixo = "🚨 [ALARME] ";
-                                else if (logItem.toUpperCase().includes("FALHA")) prefixo = "⚠️ [FALHA] ";
-                                mensagemFinal = logItem;
-                            }
-                            logsHTML = prefixo + mensagemFinal + "\n------------------------\n" + logsHTML;
-                        });
-                        logContainer.innerText = logsHTML || "Nenhum histórico disponível.";
-                    }
+            eventSource.onerror = function(err) {
+                console.error("Erro na conexão Realtime:", err);
+                evDiv.innerText = "FALHA DE SINCRONISMO\n(RECONECTANDO...)";
+                evDiv.style.color = "#ff3333";
+                card.style.borderTopColor = "#ff3333";
+            };
+        }
 
-                    // Watchdog de conexão com o ESP32 (Tolerância de 35s)
-                    const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
-                    if (tempoSemSinal > 35) {
-                        forçarModoOffline(tempoSemSinal);
-                    }
-                })
-                .catch(error => {
-                    console.error(error);
-                    evDiv.innerText = "FALHA DE SINCRONISMO\n(VERIFIQUE AS REGRAS OU URL DO BANCO)";
-                    evDiv.style.color = "#ff3333";
-                    card.style.borderTopColor = "#ff3333";
-                    txtStatus.innerText = "Status: Erro ao consultar a rota REST";
+        function buscarHistoricoCompleto() {
+            fetch(`${URL_BASE}/historico.json`)
+                .then(r => r.json())
+                .then(historico => {
+                    if (historico) atualizarHistoricoHTML(historico);
                 });
         }
 
-        function forçarModoOffline(tempo) {
-            divOffline.style.display = "block";
-            divOffline.innerText = "🚨 ALERTA: DISPOSITIVO OFFLINE HÁ " + Math.round(tempo) + " SEGUNDOS!";
-            evDiv.innerText = "SISTEMA DESCONECTADO\n(ESP32 RECEPTOR SEM WI-FI OU DESLIGADO)";
-            evDiv.style.color = "#888";
-            card.style.borderTopColor = "#555";
-            card.style.animation = "none";
-            txtStatus.innerText = "Status: Indisponível | Sem atividade de rede";
+        function atualizarHistoricoHTML(historico) {
+            let logsHTML = "";
+            // Inverte a ordem das chaves para exibir o evento mais recente sempre no TOPO
+            Object.keys(historico).reverse().forEach((key) => {
+                const logItem = historico[key];
+                let prefixo = "> ";
+                let mensagemFinal = "";
+                
+                if (logItem && typeof logItem === 'object') {
+                    if(logItem.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
+                    if(logItem.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
+                    mensagemFinal = logItem.mensagem || JSON.stringify(logItem);
+                } else if (typeof logItem === 'string') {
+                    if (logItem.toUpperCase().includes("FOGO")) prefixo = "🚨 [ALARME] ";
+                    else if (logItem.toUpperCase().includes("FALHA")) prefixo = "⚠️ [FALHA] ";
+                    mensagemFinal = logItem;
+                }
+                logsHTML += prefixo + mensagemFinal + "\n------------------------\n";
+            });
+            logContainer.innerText = logsHTML || "Nenhum histórico disponível.";
         }
 
         function atualizarLayoutCores() {
-            const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
-            if (tempoSemSinal > 35) return;
-
             txtStatus.innerText = "Status: Monitoramento Ativo | Classe: " + statusAtual;
 
             if (statusAtual === "FOGO") {
@@ -220,12 +216,26 @@
             } else {
                 logContainer.style.display = "block";
                 document.getElementById('btnLog').innerText = "🙈 OCULTAR HISTÓRICO";
+                buscarHistoricoCompleto();
             }
         }
 
-        // Execução cíclica da varredura remota
-        atualizarPainelREST();
-        setInterval(atualizarPainelREST, 3000);
+        // Watchdog executado em segundo plano a cada 5 segundos apenas para conferir a atividade da placa
+        setInterval(() => {
+            const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
+            if (tempoSemSinal > 35) {
+                divOffline.style.display = "block";
+                divOffline.innerText = "🚨 ALERTA: DISPOSITIVO OFFLINE HÁ " + Math.round(tempoSemSinal) + " SEGUNDOS!";
+                evDiv.innerText = "SISTEMA DESCONECTADO\n(ESP32 RECEPTOR SEM WI-FI OU DESLIGADO)";
+                evDiv.style.color = "#888";
+                card.style.borderTopColor = "#555";
+                card.style.animation = "none";
+                txtStatus.innerText = "Status: Indisponível | Sem atividade de rede";
+            }
+        }, 5000);
+
+        // Inicializa o Stream em Tempo Real
+        iniciarStreamRealtime();
     </script>
 </body>
 </html>
