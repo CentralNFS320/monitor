@@ -105,9 +105,8 @@
     </div>
 
     <script>
-        // URL Oficial da API REST do seu banco (Com o token público embutido para navegadores)
-        const URL_REST =
-        "https://munitor-de-alarme-default-rtdb.firebaseio.com/central.json";
+        // URL Oficial da API REST do seu banco atualizado
+        const URL_REST = "https://munitor-de-alarme-default-rtdb.firebaseio.com/central.json";
 
         const card = document.getElementById('mainCard');
         const evDiv = document.getElementById('ev');
@@ -125,7 +124,6 @@
                     return response.json();
                 })
                 .then(data => {
-                    // Caso o Firebase retorne completamente sem nós
                     if (!data) {
                         evDiv.innerText = "BANCO DE DADOS VAZIO\n(AGUARDANDO RESET DA PLACA EMISSORA)";
                         evDiv.style.color = "#f1c40f";
@@ -134,22 +132,18 @@
                         return;
                     }
 
-                    // Sincroniza se o ESP gravou na raiz ou dentro da pasta /central
+                    // Sincroniza independente da estrutura de nós do Firebase
                     const base = data.central ? data.central : data;
 
                     statusAtual = base.tipo_status || base.tipo || "NORMAL";
                     evDiv.innerText = base.status || base.mensagem || "Aguardando evento...";
                     
-                   ultimoPingESP = Number(
-                        base.heartbeat ||
-                        base.last_ping ||
-                        Date.now()
-                    );
+                    ultimoPingESP = Number(base.heartbeat || base.last_ping || Date.now());
                     divOffline.style.display = "none";
 
                     atualizarLayoutCores();
 
-                    // Processa e renderiza a lista de logs no histórico
+                    // Processa e renderiza a lista de logs no histórico remoto
                     if (base.historico) {
                         let logsHTML = "";
                         Object.keys(base.historico).forEach((key) => {
@@ -171,9 +165,9 @@
                         logContainer.innerText = logsHTML || "Nenhum histórico disponível.";
                     }
 
-                    // Watchdog de rede local
+                    // Watchdog: Verifica se o ESP32 parou de enviar o Heartbeat (Timeout 35s)
                     const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
-                    if (tempoSemSinal > 25) {
+                    if (tempoSemSinal > 35) {
                         forçarModoOffline(tempoSemSinal);
                     }
                 })
@@ -196,9 +190,10 @@
             txtStatus.innerText = "Status: Indisponível | Sem atividade de rede";
         }
 
+        // --- CONTINUAÇÃO E CORREÇÃO DA SUA FUNÇÃO CORTADA ---
         function atualizarLayoutCores() {
             const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
-            if (tempoSemSinal > 25) return;
+            if (tempoSemSinal > 35) return;
 
             txtStatus.innerText = "Status: Monitoramento Ativo | Classe: " + statusAtual;
 
@@ -206,14 +201,17 @@
                 evDiv.style.color = "#ff3333";
                 card.style.borderTopColor = "#ff3333";
                 card.style.animation = "piscar 0.8s infinite alternate";
+                logContainer.style.color = "#ff3333";
             } else if (statusAtual === "FALHA") {
                 evDiv.style.color = "#f1c40f";
                 card.style.borderTopColor = "#f1c40f";
                 card.style.animation = "none";
-            } else {
+                logContainer.style.color = "#f1c40f";
+            } else { // NORMAL
                 evDiv.style.color = "#2ecc71";
                 card.style.borderTopColor = "#2ecc71";
                 card.style.animation = "none";
+                logContainer.style.color = "#2ecc71";
             }
         }
 
@@ -223,12 +221,11 @@
                 document.getElementById('btnLog').innerText = "📜 VER HISTÓRICO REMOTO";
             } else {
                 logContainer.style.display = "block";
-                document.getElementById('btnLog').innerText = "⬅️ FECHAR HISTÓRICO";
-                logContainer.scrollTop = logContainer.scrollHeight;
+                document.getElementById('btnLog').innerText = "🙈 OCULTAR HISTÓRICO";
             }
         }
 
-        // Executa a varredura no ato e repete a cada 3 segundos de forma assíncrona
+        // Executa a busca inicial e define o loop de varredura a cada 3 segundos
         atualizarPainelREST();
         setInterval(atualizarPainelREST, 3000);
     </script>
