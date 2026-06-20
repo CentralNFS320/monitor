@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CF SISTEMAS - Monitoramento Remoto</title>
     
-    <!-- CORRIGIDO: Carregamento antecipado das bibliotecas oficiais do Firebase -->
+    <!-- Bibliotecas oficiais do Firebase -->
     <script src="https://gstatic.com"></script>
     <script src="https://gstatic.com"></script>
 
@@ -110,11 +110,10 @@
     </div>
 
     <script>
-        // --- CONFIGURAÇÃO COMPLETA E OFICIAL DO SEU FIREBASE ---
         const firebaseConfig = {
             apiKey: "AIzaSyDXqeZodkk0PaTeVvsQZCY410ymNca2xQE",
             authDomain: "://firebaseapp.com",
-            databaseURL: "https://munitor-de-alarme-default-rtdb.firebaseio.com",
+            databaseURL: "https://firebaseio.com",
             projectId: "munitor-de-alarme",
             storageBucket: "munitor-de-alarme.firebasestorage.app",
             messagingSenderId: "110591997556",
@@ -133,47 +132,72 @@
         let statusAtual = "NORMAL";
         let ultimoPingESP = Date.now();
 
-        // 1. Escuta a classificação do status
-        database.ref('/central/tipo_status').on('value', (snapshot) => {
-            statusAtual = snapshot.val() || "NORMAL";
-            atualizarLayoutCores();
-        });
+        // ESCUTA COMPLETA DA RAIZ E DE TODAS AS PASTAS DO PROJETO
+        database.ref('/').on('value', (snapshot) => {
+            const data = snapshot.val();
+            
+            if (!data) {
+                evDiv.innerText = "BANCO DE DADOS VAZIO\n(AGUARDANDO RESET DA PLACA EMISSORA)";
+                evDiv.style.color = "#f1c40f";
+                card.style.borderTopColor = "#f1c40f";
+                txtStatus.innerText = "Status: Conectado | Sem chaves registradas";
+                return;
+            }
 
-        // 2. Escuta o texto bruto enviado
-        database.ref('/central/status').on('value', (snapshot) => {
-            const msg = snapshot.val() || "Aguardando Notifier...";
-            evDiv.innerText = msg;
-            ultimoPingESP = Date.now(); 
+            // Identifica dinamicamente se as chaves estão dentro de /central ou direto na raiz
+            const base = data.central ? data.central : data;
+
+            statusAtual = base.tipo_status || base.tipo || "NORMAL";
+            const mensagemNotifier = base.status || base.mensagem || "Aguardando string da central Notifier...";
+            
+            evDiv.innerText = mensagemNotifier;
+            ultimoPingESP = base.heartbeat || base.last_ping || Date.now(); 
             divOffline.style.display = "none";
-        });
+            
+            atualizarLayoutCores();
 
-        // 3. Escuta o Heartbeat/last_ping do Firebase
-        database.ref('/central/last_ping').on('value', (snapshot) => {
-            if (snapshot.exists()) {
-                ultimoPingESP = snapshot.val();
+            // Renderização flexível do histórico de logs
+            if (base.historico) {
+                let logsHTML = "";
+                Object.keys(base.historico).forEach((key) => {
+                    const logItem = base.historico[key];
+                    let prefixo = "> ";
+                    let mensagemFinal = "";
+                    
+                    if (logItem && typeof logItem === 'object') {
+                        if(logItem.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
+                        if(logItem.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
+                        mensagemFinal = logItem.mensagem || JSON.stringify(logItem);
+                    } else if (typeof logItem === 'string') {
+                        if (logItem.toUpperCase().includes("FOGO")) prefixo = "🚨 [ALARME] ";
+                        else if (logItem.toUpperCase().includes("FALHA")) prefixo = "⚠️ [FALHA] ";
+                        mensagemFinal = logItem;
+                    }
+                    logsHTML = prefixo + mensagemFinal + "\n------------------------\n" + logsHTML;
+                });
+                logContainer.innerText = logsHTML;
             }
         });
 
-        // Verifica a cada 3 segundos se o dispositivo caiu
+        // Watchdog de monitoramento do sinal da placa
         setInterval(() => {
             const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
-            if (tempoSemSinal > 15) { 
+            if (tempoSemSinal > 25) { 
                 divOffline.style.display = "block";
                 divOffline.innerText = "🚨 ALERTA: DISPOSITIVO OFFLINE HÁ " + Math.round(tempoSemSinal) + " SEGUNDOS!";
                 evDiv.innerText = "SISTEMA DESCONECTADO\n(ESP32 SEM ALIMENTAÇÃO OU WI-FI)";
                 evDiv.style.color = "#888"; 
                 card.style.borderTopColor = "#555";
                 card.style.animation = "none";
-                txtStatus.innerText = "Status: Indisponível | Sem sinal da placa";
+                txtStatus.innerText = "Status: Indisponível | Sem atividade de rede";
             }
         }, 3000);
 
         function atualizarLayoutCores() {
-            // CORRIGIDO: Inserção de aspas e crases corretas na string
             txtStatus.innerText = "Status: Monitoramento Ativo | Classe: " + statusAtual;
             
             const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
-            if (tempoSemSinal > 15) return;
+            if (tempoSemSinal > 25) return;
 
             if (statusAtual === "FOGO") {
                 evDiv.style.color = "#ff3333";
@@ -190,28 +214,6 @@
             }
         }
 
-        // 4. Lista do Histórico Remoto
-        database.ref('/central/historico').limitToLast(40).on('value', (snapshot) => {
-            let logsHTML = "";
-            snapshot.forEach((childSnapshot) => {
-                const data = childSnapshot.val();
-                let prefixo = "> ";
-                
-                // Trata se for um objeto estruturado ou string crua
-                if (data && typeof data === 'object') {
-                    if(data.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
-                    if(data.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
-                    logsHTML += prefixo + (data.mensagem || JSON.stringify(data)) + "\n------------------------\n";
-                } else if (typeof data === 'string') {
-                    if (data.toUpperCase().includes("FOGO")) prefixo = "🚨 [ALARME] ";
-                    else if (data.toUpperCase().includes("FALHA")) prefixo = "⚠️ [FALHA] ";
-                    logsHTML += prefixo + data + "\n------------------------\n";
-                }
-            });
-            logContainer.innerText = logsHTML || "Sem novos logs registrados.";
-            logContainer.scrollTop = logContainer.scrollHeight;
-        });
-
         function toggleHistorico() {
             if (logContainer.style.display === "block") {
                 logContainer.style.display = "none";
@@ -219,6 +221,7 @@
             } else {
                 logContainer.style.display = "block";
                 document.getElementById('btnLog').innerText = "⬅️ FECHAR HISTÓRICO";
+                logContainer.scrollTop = logContainer.scrollHeight;
             }
         }
     </script>
