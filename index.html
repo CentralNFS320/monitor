@@ -96,10 +96,10 @@
         
         <div id="statusConexao" class="alerta-offline">🚨 ATENÇÃO: PERDA DE COMUNICAÇÃO COM O MÓDULO ESP32!</div>
         
-        <div id="ev" class="tela-central">Conectando ao servidor em tempo real...</div>
+        <div id="ev" class="tela-central">Sincronizando banco de dados...</div>
         
-        <p style="color:#666; font-size:12px;" id="txtStatus">Status: Sincronizando com a nuvem...</p>
-        <p style="color:#0af; font-size:13px; font-weight:bold; margin-top:-5px;" id="txtSinal">Sinal LoRa: Conectando...</p>
+        <p style="color:#666; font-size:12px;" id="txtStatus">Status: Conectando com a nuvem...</p>
+        <p style="color:#0af; font-size:13px; font-weight:bold; margin-top:-5px;" id="txtSinal">Sinal LoRa: Verificando...</p>
         <hr style="border-color: #222;">
         
         <div class="btn" id="btnLog" onclick="toggleHistorico()">📜 VER HISTÓRICO REMOTO</div>
@@ -107,6 +107,7 @@
     </div>
 
     <script>
+        // URL definida exatamente como você especificou, sem barras ou nós no final
         const URL_BASE = "https://munitor-de-alarme-default-rtdb.firebaseio.com";
         
         const card = document.getElementById('mainCard');
@@ -118,9 +119,37 @@
 
         let statusAtual = "NORMAL";
         let ultimoPingESP = Date.now();
+        let usandoStream = true;
 
+        // Função de consulta via requisição HTTP tradicional (Plano B de segurança)
+        function consultarPainelTradicional() {
+            fetch(`${URL_BASE}/central.json`)
+                .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+                .then(data => {
+                    if (!data) return;
+                    processarDadosFirebase(data);
+                })
+                .catch(() => {
+                    evDiv.innerText = "FALHA DE CONEXÃO COM O BANCO";
+                    evDiv.style.color = "#ff3333";
+                    card.style.borderTopColor = "#ff3333";
+                });
+        }
+
+        // Processa as informações trazidas do Firebase e atualiza o layout
+        function processarDadosFirebase(data) {
+            statusAtual = data.tipo_status || "NORMAL";
+            evDiv.innerText = data.status || data.mensagem || "Aguardando evento...";
+            txtSinal.innerText = "Sinal LoRa: " + (data.sinal_lora || "SEM SINAL");
+            ultimoPingESP = Number(data.heartbeat || Date.now());
+            divOffline.style.display = "none";
+            atualizarLayoutCores();
+            if (data.historico) atualizarHistoricoHTML(data.historico);
+        }
+        // --- MOTOR DE STREAM EM TEMPO REAL ---
         function iniciarStreamRealtime() {
-            const eventSource = new EventSource(`${URL_BASE}.json`);
+            // A barra final antes do .json resolve a trava de leitura do servidor do Firebase
+            const eventSource = new EventSource(`${URL_BASE}/central/.json`);
 
             eventSource.addEventListener('put', function(e) {
                 const json = JSON.parse(e.data);
@@ -130,13 +159,7 @@
                 const data = json.data;
 
                 if (path === "/" || path === "") {
-                    if (data) {
-                        statusAtual = data.tipo_status || "NORMAL";
-                        evDiv.innerText = data.status || data.mensagem || "Aguardando evento...";
-                        txtSinal.innerText = "Sinal LoRa: " + (data.sinal_lora || "SEM SINAL");
-                        ultimoPingESP = Number(data.heartbeat || Date.now());
-                        if (data.historico) atualizarHistoricoHTML(data.historico);
-                    }
+                    if (data) processarDadosFirebase(data);
                 } else if (path === "/status") {
                     evDiv.innerText = data;
                 } else if (path === "/tipo_status") {
@@ -153,16 +176,19 @@
                 atualizarLayoutCores();
             });
 
-            eventSource.onerror = function(err) {
-                console.error("Erro na conexão Realtime:", err);
-                evDiv.innerText = "FALHA DE SINCRONISMO\n(RECONECTANDO...)";
-                evDiv.style.color = "#ff3333";
-                card.style.borderTopColor = "#ff3333";
+            eventSource.onerror = function() {
+                // Se der erro no Stream, ativa de forma transparente o pooling tradicional para garantir o funcionamento
+                if (usandoStream) {
+                    console.log("Stream indisponível. Mudando para consultas HTTP tradicionais...");
+                    usandoStream = false;
+                    eventSource.close();
+                    setInterval(consultarPainelTradicional, 3000);
+                }
             };
         }
 
         function buscarHistoricoCompleto() {
-            fetch(`${URL_BASE}/historico.json`)
+            fetch(`${URL_BASE}/central/historico.json`)
                 .then(r => r.json())
                 .then(historico => {
                     if (historico) atualizarHistoricoHTML(historico);
@@ -222,6 +248,7 @@
             }
         }
 
+        // Watchdog de atividade do ESP32 executado a cada 5 segundos
         setInterval(() => {
             const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
             if (tempoSemSinal > 35) {
@@ -236,6 +263,8 @@
             }
         }, 5000);
 
+        // Dispara a carga inicial e conecta o motor de varredura
+        consultarPainelTradicional();
         iniciarStreamRealtime();
     </script>
 </body>
