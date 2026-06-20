@@ -3,65 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Leitura Bruta</title>
+    <title>CF SISTEMAS - Sincronismo OK</title>
+    
+    <!-- BIBLIOTECAS OFICIAIS DA GOOGLE (VERSÃO ESTÁVEL COMPATÍVEL COM NAVEGADORES) -->
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
+
     <style>
-        body { font-family: monospace; background: #121212; color: #e0e0e0; padding: 20px; text-align: left; }
-        .painel { background: #000; border: 2px solid #ff00ea; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(255,0,234,0.2); max-width: 600px; margin: 0 auto; }
-        .dados-brutos { background: #050505; border: 1px solid #333; padding: 15px; color: #0f0; white-space: pre-wrap; font-size: 13px; height: 300px; overflow-y: scroll; margin-top: 15px; }
+        body { font-family: monospace; background: #121212; color: #e0e0e0; text-align: center; padding: 20px; }
+        .painel { background: #000; border: 2px solid #2ecc71; padding: 20px; display: inline-block; width: 90%; max-width: 500px; border-radius: 8px; margin-top: 50px; box-shadow: 0 4px 15px rgba(46,204,113,0.3); }
+        .status-texto { font-size: 20px; color: #2ecc71; font-weight: bold; margin: 20px 0; white-space: pre-wrap; }
+        .info-sub { font-size: 11px; color: #666; font-family: sans-serif; }
+        .log-box { background: #050505; border: 1px solid #333; padding: 10px; height: 180px; overflow-y: scroll; text-align: left; font-size: 12px; color: #2ecc71; white-space: pre-wrap; margin-top: 15px; }
     </style>
 </head>
 <body>
 
     <div class="painel">
-        <!-- TÍTULO NOVO PARA CONFIRMAR ATUALIZAÇÃO VISUAL -->
-        <h2 style="color: #ff00ea; text-align: center;">MODO DE INSPEÇÃO ATIVO</h2>
-        <p style="font-size: 11px; color: #666; text-align: center;">Buscando estrutura crua do JSON...</p>
+        <!-- SE MUDAR PARA ESSE TÍTULO VERDE, INDICA QUE O SITE ATUALIZOU -->
+        <h2>CF SISTEMAS - MONITORAMENTO ATIVO</h2>
+        <h5 style="color: #666; margin-top: -5px;">Conexão Web Nativa SDK</h5>
         <hr style="border-color: #222;">
         
-        <div id="statusRede" style="font-weight: bold; text-align: center;">Aguardando resposta da nuvem...</div>
+        <div id="msgCentral" class="status-texto">Conectando ao Firebase...</div>
+        <p id="infoRede" class="info-sub">Iniciando Varredura...</p>
         
-        <h4>📦 CONTEÚDO REAL DO SEU BANCO DE DADOS:</h4>
-        <div id="jsonDisplay" class="dados-brutos">Carregando estrutura...</div>
+        <h4 style="text-align: left; margin-bottom: 5px; color: #aaa;">📜 ÚLTIMOS EVENTOS:</h4>
+        <div id="logBox" class="log-box">Aguardando pacotes da nuvem...</div>
     </div>
 
     <script>
-        // Testando a raiz inteira do banco para ver a pasta /central criada pelo ESP
-        const URL_DEBUG = "https://firebaseio.com";
+        // CONFIGURAÇÃO OFICIAL COMPLETA EXTRAÍDA DO SEU PAINEL WEB DO FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyDXqeZodkk0PaTeVvsQZCY410ymNca2xQE",
+            authDomain: "://firebaseapp.com",
+            databaseURL: "https://firebaseio.com",
+            projectId: "munitor-de-alarme",
+            storageBucket: "munitor-de-alarme.firebasestorage.app",
+            messagingSenderId: "110591997556",
+            appId: "1:110591997556:web:98493257f6b77d691c0321"
+        };
 
-        function inspecionarBanco() {
-            fetch(URL_DEBUG)
-                .then(res => {
-                    if (!res.ok) throw new Error("Erro na rede. Código HTTP: " + res.status);
-                    return res.json();
-                })
-                .then(data => {
-                    const statusDiv = document.getElementById("statusRede");
-                    const displayDiv = document.getElementById("jsonDisplay");
+        // Inicializa o Firebase usando os recursos nativos de segurança da Google
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
-                    if (data === null) {
-                        statusDiv.innerText = "✅ CONECTADO! Mas o seu banco está totalmente vazio.";
-                        statusDiv.style.color = "#f1c40f";
-                        displayDiv.innerText = "Nenhuma chave encontrada na nuvem.";
-                        return;
+        const msgCentral = document.getElementById("msgCentral");
+        const infoRede = document.getElementById("infoRede");
+        const logBox = document.getElementById("logBox");
+
+        // Escuta em tempo real a pasta /central criada pela placa ESP32
+        database.ref('/central').on('value', (snapshot) => {
+            const data = snapshot.val();
+            
+            if (!data) {
+                msgCentral.innerText = "BANCO SEM REGISTROS";
+                msgCentral.style.color = "#f1c40f";
+                infoRede.innerText = "Verifique o envio de dados do seu circuito ESP32 Receptor.";
+                return;
+            }
+
+            // 1. Atualiza a mensagem e define a cor dinamicamente
+            const mensagemNotifier = data.status || "Aguardando string da central Notifier...";
+            msgCentral.innerText = mensagemNotifier;
+
+            if (data.tipo_status === "FALHA") {
+                msgCentral.style.color = "#f1c40f";
+            } else if (data.tipo_status === "FOGO") {
+                msgCentral.style.color = "#ff3333";
+            } else {
+                msgCentral.style.color = "#2ecc71";
+            }
+
+            infoRede.innerText = "Sincronizado com sucesso via Firebase SDK! Classe: " + (data.tipo_status || "NORMAL");
+
+            // 2. Processa a lista do histórico
+            if (data.historico) {
+                let textoLogs = "";
+                Object.keys(data.historico).slice(-15).forEach(key => {
+                    const logItem = data.historico[key];
+                    if (typeof logItem === 'string') {
+                        textoLogs = "> " + logItem + "\n" + textoLogs;
+                    } else if (logItem && logItem.mensagem) {
+                        textoLogs = "> " + logItem.mensagem + "\n" + textoLogs;
                     }
-
-                    statusDiv.innerText = "🚀 SUCESSO! Banco de dados lido com sucesso.";
-                    statusDiv.style.color = "#2ecc71";
-                    
-                    // Despeja a estrutura real e as letras como o ESP salvou na nuvem
-                    displayDiv.innerText = JSON.stringify(data, null, 4);
-                })
-                .catch(err => {
-                    console.error(err);
-                    document.getElementById("statusRede").innerText = "❌ ERRO DE CONEXÃO";
-                    document.getElementById("statusRede").style.color = "#ff3333";
-                    document.getElementById("jsonDisplay").innerText = err.message + "\n\nVerifique se o banco de dados foi excluído ou se a aba de Regras (Rules) bloqueou a leitura anônima.";
                 });
-        }
-
-        // Executa imediatamente e varre a cada 4 segundos
-        inspecionarBanco();
-        setInterval(inspecionarBanco, 4000);
+                logBox.innerText = textoLogs;
+            }
+        }, (error) => {
+            console.error("Erro do Firebase:", error);
+            msgCentral.innerText = "ACESSO NEGADO";
+            msgCentral.style.color = "#ff3333";
+            infoRede.innerText = "Erro: " + error.message + " | Libere as regras para '.read': true no painel.";
+        });
     </script>
 </body>
 </html>
