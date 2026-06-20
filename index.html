@@ -20,7 +20,6 @@
 <body>
 
     <div class="painel">
-        <!-- SE MUDAR PARA ESSE TÍTULO VERDE, INDICA QUE O SITE ATUALIZOU -->
         <h2>CF SISTEMAS - MONITORAMENTO ATIVO</h2>
         <h5 style="color: #666; margin-top: -5px;">Conexão Web Nativa SDK</h5>
         <hr style="border-color: #222;">
@@ -44,7 +43,6 @@
             appId: "1:110591997556:web:98493257f6b77d691c0321"
         };
 
-        // Inicializa o Firebase usando os recursos nativos de segurança da Google
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
@@ -52,41 +50,41 @@
         const infoRede = document.getElementById("infoRede");
         const logBox = document.getElementById("logBox");
 
-        // Escuta em tempo real a pasta /central criada pela placa ESP32
-        
-
-// SUBSTITUA DEIXANDO APENAS A BARRA DA RAIZ DO BANCO:
+        // ESCUTA A RAIZ DO BANCO PARA PEGAR TODAS AS CHAVES CRIADAS PELO ESP32
         database.ref('/').on('value', (snapshot) => {
-
-       
             const data = snapshot.val();
             
-            if (!data) {
-                msgCentral.innerText = "BANCO SEM REGISTROS";
+            // SE O BANCO RETORNAR VAZIO (NULO), INDICA NA TELA EM VEZ DE TRAVAR
+            if (!data || (!data.central && !data.status)) {
+                msgCentral.innerText = "BANCO DE DADOS VAZIO";
                 msgCentral.style.color = "#f1c40f";
-                infoRede.innerText = "Verifique o envio de dados do seu circuito ESP32 Receptor.";
+                infoRede.innerText = "Conectado com sucesso! Dê um RESET no ESP8266 para enviar dados.";
+                logBox.innerText = "Nenhum histórico encontrado no novo servidor de banco de dados.";
                 return;
             }
 
+            // Identifica se o ESP32 gravou dentro da pasta /central ou solto na raiz
+            const bancoCentral = data.central ? data.central : data;
+
             // 1. Atualiza a mensagem e define a cor dinamicamente
-            const mensagemNotifier = data.status || "Aguardando string da central Notifier...";
+            const mensagemNotifier = bancoCentral.status || "Aguardando string da central Notifier...";
             msgCentral.innerText = mensagemNotifier;
 
-            if (data.tipo_status === "FALHA") {
+            if (bancoCentral.tipo_status === "FALHA") {
                 msgCentral.style.color = "#f1c40f";
-            } else if (data.tipo_status === "FOGO") {
+            } else if (bancoCentral.tipo_status === "FOGO") {
                 msgCentral.style.color = "#ff3333";
             } else {
                 msgCentral.style.color = "#2ecc71";
             }
 
-            infoRede.innerText = "Sincronizado com sucesso via Firebase SDK! Classe: " + (data.tipo_status || "NORMAL");
+            infoRede.innerText = "Sincronizado com sucesso via Firebase SDK! Classe: " + (bancoCentral.tipo_status || "NORMAL");
 
             // 2. Processa a lista do histórico
-            if (data.historico) {
+            if (bancoCentral.historico) {
                 let textoLogs = "";
-                Object.keys(data.historico).slice(-15).forEach(key => {
-                    const logItem = data.historico[key];
+                Object.keys(bancoCentral.historico).slice(-15).forEach(key => {
+                    const logItem = bancoCentral.historico[key];
                     if (typeof logItem === 'string') {
                         textoLogs = "> " + logItem + "\n" + textoLogs;
                     } else if (logItem && logItem.mensagem) {
