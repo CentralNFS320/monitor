@@ -10,16 +10,20 @@
         .status-texto { font-size: 20px; color: #00a2ff; font-weight: bold; margin: 20px 0; white-space: pre-wrap; }
         .info-sub { font-size: 11px; color: #666; font-family: sans-serif; }
         .log-box { background: #050505; border: 1px solid #333; padding: 10px; height: 180px; overflow-y: scroll; text-align: left; font-size: 12px; color: #00a2ff; white-space: pre-wrap; margin-top: 15px; }
+        /* NOVO: Estilo para a caixa indicadora do sinal do rádio */
+        .caixa-sinal { background: #111; border: 1px solid #444; padding: 8px; margin: 15px 0; font-weight: bold; font-size: 13px; border-radius: 4px; display: inline-block; width: 80%; }
     </style>
 </head>
 <body>
 
     <div class="painel">
-        <!-- ALTERAÇÃO VISUAL: TÍTULO MODIFICADO PARA VALIDAR ATUALIZAÇÃO -->
         <h2>TESTE DE ALTERAÇÃO OK</h2>
         <h5 style="color: #666; margin-top: -5px;">Varredura REST - CF Sistemas</h5>
         <hr style="border-color: #222;">
         
+        <!-- NOVO: Elemento visual do Sinal LoRa na tela -->
+        <div id="statusSinalLora" class="caixa-sinal" style="color: #aaa;">📶 SINAL LORA: VERIFICANDO...</div>
+
         <div id="msgCentral" class="status-texto">Conectando ao Firebase...</div>
         <p id="infoRede" class="info-sub">Iniciando busca de pacotes...</p>
         
@@ -28,7 +32,6 @@
     </div>
 
     <script>
-        // URL Oficial estruturada e corrigida
         const URL_REST = "https://firebaseio.com";
 
         function atualizarPainelSimples() {
@@ -44,8 +47,22 @@
                         return;
                     }
 
+                    // Lógica para interpretar o texto atual e definir o status do rádio LoRa
+                    const msgAtual = data.status || "";
+                    const divSinal = document.getElementById("statusSinalLora");
+
+                    if (msgAtual.includes("FALHA DE COMUNICACAO") || data.tipo_status === "DESCONECTADO") {
+                        divSinal.innerText = "⚠️ SINAL LORA: LINK CAÍDO / FORA DE ALCANCE";
+                        divSinal.style.color = "#ff3333";
+                        divSinal.style.borderColor = "#ff3333";
+                    } else if (msgAtual.includes("CENTRAL RECONECTADA") || msgAtual.includes("CENTRAL DESCONECTADA") || msgAtual.includes("REINICIANDO") || data.heartbeat) {
+                        divSinal.innerText = "📶 SINAL LORA: CONECTADO E ATIVO";
+                        divSinal.style.color = "#2ecc71";
+                        divSinal.style.borderColor = "#2ecc71";
+                    }
+
                     // Mostra o texto atual da Notifier enviado pelo ESP
-                    document.getElementById("msgCentral").innerText = data.status || "Aguardando evento...";
+                    document.getElementById("msgCentral").innerText = msgAtual || "Aguardando evento...";
                     
                     if (data.tipo_status === "FALHA") {
                         document.getElementById("msgCentral").style.color = "#f1c40f";
