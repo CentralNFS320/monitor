@@ -3,110 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Sincronismo OK</title>
+    <title>CF SISTEMAS - Monitoramento Remoto</title>
+    
+    <!-- CORRIGIDO: Carregamento antecipado das bibliotecas oficiais do Firebase -->
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
+
     <style>
-        body { font-family: monospace; background: #121212; color: #e0e0e0; text-align: center; padding: 20px; }
-        .painel { background: #000; border: 2px solid #2ecc71; padding: 20px; display: inline-block; width: 90%; max-width: 500px; border-radius: 8px; margin-top: 50px; box-shadow: 0 4px 15px rgba(46,204,113,0.3); }
-        .status-texto { font-size: 20px; color: #2ecc71; font-weight: bold; margin: 20px 0; white-space: pre-wrap; }
-        .info-sub { font-size: 11px; color: #666; font-family: sans-serif; }
-        .log-box { background: #050505; border: 1px solid #333; padding: 10px; height: 180px; overflow-y: scroll; text-align: left; font-size: 12px; color: #2ecc71; white-space: pre-wrap; margin-top: 15px; }
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #121212;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            background: #1e1e1e;
+            padding: 20px;
+            border-top: 5px solid #2ecc71;
+            display: inline-block;
+            margin-top: 30px;
+            width: 95%;
+            max-width: 600px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.7);
+            transition: all 0.5s ease;
+        }
+        .tela-central {
+            font-family: 'Courier New', Courier, monospace;
+            background: #050505;
+            color: #2ecc71;
+            padding: 15px;
+            text-align: left;
+            font-size: 16px;
+            line-height: 1.4;
+            border-radius: 6px;
+            border: 1px solid #333;
+            white-space: pre-wrap;
+            min-height: 80px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            margin: 20px 0;
+            transition: color 0.3s ease;
+        }
+        .btn {
+            display: inline-block;
+            margin-top: 20px;
+            color: #0af;
+            text-decoration: none;
+            font-weight: bold;
+            border: 1px solid #0af;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn:hover {
+            background: rgba(0, 170, 255, 0.1);
+        }
+        .log-container {
+            background: #000;
+            border: 1px solid #333;
+            padding: 12px;
+            height: 300px;
+            overflow-y: scroll;
+            text-align: left;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            color: #2ecc71;
+            margin-top: 15px;
+            display: none;
+            font-size: 13px;
+        }
+        .alerta-offline {
+            background: #721c24;
+            color: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            display: none;
+            border: 1px solid #f5c6cb;
+        }
+        @keyframes piscar {
+            0% { box-shadow: 0 0 5px #ff3333; background: #1e1e1e; }
+            100% { box-shadow: 0 0 25px #ff3333; background: #2a0000; }
+        }
     </style>
 </head>
 <body>
 
-    <div class="painel">
-        <h2>CF SISTEMAS - LEITURA HTTP REST</h2>
-        <h5 style="color: #666; margin-top: -5px;">Varredura por requisição direta</h5>
+    <div class="card" id="mainCard">
+        <h1>CF SISTEMAS</h1>
+        <h4 style="color:#888; margin-top:-10px;">Monitoramento NFS-320 (Remoto)</h4>
+        
+        <div id="statusConexao" class="alerta-offline">🚨 ATENÇÃO: PERDA DE COMUNICAÇÃO COM O MÓDULO ESP32!</div>
+        
+        <div id="ev" class="tela-central">Conectando ao Firebase...</div>
+        
+        <p style="color:#666; font-size:12px;" id="txtStatus">Status: Sincronizando com a nuvem...</p>
         <hr style="border-color: #222;">
         
-        <div id="msgCentral" class="status-texto">Iniciando Varredura...</div>
-        <p id="infoRede" class="info-sub">Conectando ao banco...</p>
-        
-        <h4 style="text-align: left; margin-bottom: 5px; color: #aaa;">📜 ÚLTIMOS EVENTOS:</h4>
-        <div id="logBox" class="log-box">Aguardando dados...</div>
+        <div class="btn" id="btnLog" onclick="toggleHistorico()">📜 VER HISTÓRICO REMOTO</div>
+        <div class="log-container" id="logContainer">Carregando histórico da nuvem...</div>
     </div>
 
     <script>
-        // Chave de API extraída do seu bloco de notas oficial do Firebase
-        const API_KEY = "AIzaSyDXqeZodkk0PaTeVvsQZCY410ymNca2xQE";
+        // --- CONFIGURAÇÃO COMPLETA E OFICIAL DO SEU FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDXqeZodkk0PaTeVvsQZCY410ymNca2xQE",
+            authDomain: "://firebaseapp.com",
+            databaseURL: "https://munitor-de-alarme-default-rtdb.firebaseio.com",
+            projectId: "munitor-de-alarme",
+            storageBucket: "munitor-de-alarme.firebasestorage.app",
+            messagingSenderId: "110591997556",
+            appId: "1:110591997556:web:98493257f6b77d691c0321"
+        };
 
-        // Rotas de teste automáticas (Cobre "munitor" com U e "monitor" com O)
-        const ROTAS = [
-            `https://firebaseio.com{API_KEY}`,
-            `https://firebaseio.com{API_KEY}`,
-            `https://firebaseio.com{API_KEY}`,
-            `https://firebaseio.com{API_KEY}`
-        ];
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
-        let indiceRotaAtual = 0;
+        const card = document.getElementById('mainCard');
+        const evDiv = document.getElementById('ev');
+        const logContainer = document.getElementById('logContainer');
+        const txtStatus = document.getElementById('txtStatus');
+        const divOffline = document.getElementById('statusConexao');
 
-        function varrerBancoFirebase() {
-            const urlAlvo = ROTAS[indiceRotaAtual];
+        let statusAtual = "NORMAL";
+        let ultimoPingESP = Date.now();
+
+        // 1. Escuta a classificação do status
+        database.ref('/central/tipo_status').on('value', (snapshot) => {
+            statusAtual = snapshot.val() || "NORMAL";
+            atualizarLayoutCores();
+        });
+
+        // 2. Escuta o texto bruto enviado
+        database.ref('/central/status').on('value', (snapshot) => {
+            const msg = snapshot.val() || "Aguardando Notifier...";
+            evDiv.innerText = msg;
+            ultimoPingESP = Date.now(); 
+            divOffline.style.display = "none";
+        });
+
+        // 3. Escuta o Heartbeat/last_ping do Firebase
+        database.ref('/central/last_ping').on('value', (snapshot) => {
+            if (snapshot.exists()) {
+                ultimoPingESP = snapshot.val();
+            }
+        });
+
+        // Verifica a cada 3 segundos se o dispositivo caiu
+        setInterval(() => {
+            const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
+            if (tempoSemSinal > 15) { 
+                divOffline.style.display = "block";
+                divOffline.innerText = "🚨 ALERTA: DISPOSITIVO OFFLINE HÁ " + Math.round(tempoSemSinal) + " SEGUNDOS!";
+                evDiv.innerText = "SISTEMA DESCONECTADO\n(ESP32 SEM ALIMENTAÇÃO OU WI-FI)";
+                evDiv.style.color = "#888"; 
+                card.style.borderTopColor = "#555";
+                card.style.animation = "none";
+                txtStatus.innerText = "Status: Indisponível | Sem sinal da placa";
+            }
+        }, 3000);
+
+        function atualizarLayoutCores() {
+            // CORRIGIDO: Inserção de aspas e crases corretas na string
+            txtStatus.innerText = "Status: Monitoramento Ativo | Classe: " + statusAtual;
             
-            fetch(urlAlvo)
-                .then(res => {
-                    if (!res.ok) throw new Error("Erro HTTP: " + res.status);
-                    return res.json();
-                })
-                .then(data => {
-                    const msgCentral = document.getElementById("msgCentral");
-                    const infoRede = document.getElementById("infoRede");
-                    const logBox = document.getElementById("logBox");
+            const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
+            if (tempoSemSinal > 15) return;
 
-                    if (!data) {
-                        msgCentral.innerText = "BANCO DE DADOS VAZIO";
-                        msgCentral.style.color = "#f1c40f";
-                        infoRede.innerText = "Conectado! Aguardando o primeiro reset da placa central.";
-                        return;
-                    }
-
-                    // Se a resposta vier envelopada na chave 'central' ou direta na raiz
-                    let base = data.central ? data.central : data;
-
-                    // Captura e exibe as strings enviadas pelo ESP32
-                    const stringStatus = base.status || base.mensagem || "Aguardando sinal da central...";
-                    msgCentral.innerText = stringStatus;
-
-                    const classeStatus = base.tipo_status || base.tipo || "NORMAL";
-                    if (classeStatus === "FALHA") {
-                        msgCentral.style.color = "#f1c40f";
-                    } else if (classeStatus === "FOGO") {
-                        msgCentral.style.color = "#ff3333";
-                    } else {
-                        msgCentral.style.color = "#2ecc71";
-                    }
-
-                    infoRede.innerText = "Sincronizado! Comunicação ativa na rota: " + indiceRotaAtual;
-
-                    // Monta o histórico de logs
-                    if (base.historico) {
-                        let txtLogs = "";
-                        Object.keys(base.historico).slice(-15).forEach(key => {
-                            const item = base.historico[key];
-                            if (typeof item === 'string') {
-                                txtLogs = "> " + item + "\n" + txtLogs;
-                            } else if (item && item.mensagem) {
-                                txtLogs = "> " + item.mensagem + "\n" + txtLogs;
-                            }
-                        });
-                        logBox.innerText = txtLogs;
-                    }
-                })
-                .catch(err => {
-                    console.warn(`Falha na rota ${indiceRotaAtual}, testando próxima...`);
-                    
-                    // Fica alternando as URLs até achar qual delas o Google aceita
-                    indiceRotaAtual = (indiceRotaAtual + 1) % ROTAS.length;
-
-                    document.getElementById("msgCentral").innerText = "BUSCANDO ROTA REMOTA";
-                    document.getElementById("msgCentral").style.color = "#f1c40f";
-                    document.getElementById("infoRede").innerText = "Sincronizando portas de rede do Firebase...";
-                });
+            if (statusAtual === "FOGO") {
+                evDiv.style.color = "#ff3333";
+                card.style.borderTopColor = "#ff3333";
+                card.style.animation = "piscar 0.8s infinite alternate";
+            } else if (statusAtual === "FALHA") {
+                evDiv.style.color = "#f1c40f";
+                card.style.borderTopColor = "#f1c40f";
+                card.style.animation = "none";
+            } else {
+                evDiv.style.color = "#2ecc71";
+                card.style.borderTopColor = "#2ecc71";
+                card.style.animation = "none";
+            }
         }
 
-        // Inicia a execução e varre a cada 3 segundos
-        varrerBancoFirebase();
-        setInterval(varrerBancoFirebase, 3000);
+        // 4. Lista do Histórico Remoto
+        database.ref('/central/historico').limitToLast(40).on('value', (snapshot) => {
+            let logsHTML = "";
+            snapshot.forEach((childSnapshot) => {
+                const data = childSnapshot.val();
+                let prefixo = "> ";
+                
+                // Trata se for um objeto estruturado ou string crua
+                if (data && typeof data === 'object') {
+                    if(data.tipo === "FOGO") prefixo = "🚨 [ALARME] ";
+                    if(data.tipo === "FALHA") prefixo = "⚠️ [FALHA] ";
+                    logsHTML += prefixo + (data.mensagem || JSON.stringify(data)) + "\n------------------------\n";
+                } else if (typeof data === 'string') {
+                    if (data.toUpperCase().includes("FOGO")) prefixo = "🚨 [ALARME] ";
+                    else if (data.toUpperCase().includes("FALHA")) prefixo = "⚠️ [FALHA] ";
+                    logsHTML += prefixo + data + "\n------------------------\n";
+                }
+            });
+            logContainer.innerText = logsHTML || "Sem novos logs registrados.";
+            logContainer.scrollTop = logContainer.scrollHeight;
+        });
+
+        function toggleHistorico() {
+            if (logContainer.style.display === "block") {
+                logContainer.style.display = "none";
+                document.getElementById('btnLog').innerText = "📜 VER HISTÓRICO REMOTO";
+            } else {
+                logContainer.style.display = "block";
+                document.getElementById('btnLog').innerText = "⬅️ FECHAR HISTÓRICO";
+            }
+        }
     </script>
 </body>
 </html>
