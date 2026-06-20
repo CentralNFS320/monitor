@@ -99,6 +99,7 @@
         <div id="ev" class="tela-central">Conectando ao servidor em tempo real...</div>
         
         <p style="color:#666; font-size:12px;" id="txtStatus">Status: Sincronizando com a nuvem...</p>
+        <p style="color:#0af; font-size:13px; font-weight:bold; margin-top:-5px;" id="txtSinal">Sinal LoRa: Conectando...</p>
         <hr style="border-color: #222;">
         
         <div class="btn" id="btnLog" onclick="toggleHistorico()">📜 VER HISTÓRICO REMOTO</div>
@@ -106,22 +107,20 @@
     </div>
 
     <script>
-        // URL definida exatamente como você especificou, sem barras ou nós no final
-        const URL_BASE = "https://munitor-de-alarme-default-rtdb.firebaseio.com";
+        const URL_BASE = "https://firebaseio.com";
         
         const card = document.getElementById('mainCard');
         const evDiv = document.getElementById('ev');
         const logContainer = document.getElementById('logContainer');
         const txtStatus = document.getElementById('txtStatus');
+        const txtSinal = document.getElementById('txtSinal');
         const divOffline = document.getElementById('statusConexao');
 
         let statusAtual = "NORMAL";
         let ultimoPingESP = Date.now();
 
-        // --- CONEXÃO STREAM EM TEMPO REAL ---
         function iniciarStreamRealtime() {
-            // Concatena dinamicamente a rota interna /central necessária para ler os dados do ESP32
-            const eventSource = new EventSource(`${URL_BASE}/central.json`);
+            const eventSource = new EventSource(`${URL_BASE}.json`);
 
             eventSource.addEventListener('put', function(e) {
                 const json = JSON.parse(e.data);
@@ -134,6 +133,7 @@
                     if (data) {
                         statusAtual = data.tipo_status || "NORMAL";
                         evDiv.innerText = data.status || data.mensagem || "Aguardando evento...";
+                        txtSinal.innerText = "Sinal LoRa: " + (data.sinal_lora || "SEM SINAL");
                         ultimoPingESP = Number(data.heartbeat || Date.now());
                         if (data.historico) atualizarHistoricoHTML(data.historico);
                     }
@@ -141,6 +141,8 @@
                     evDiv.innerText = data;
                 } else if (path === "/tipo_status") {
                     statusAtual = data;
+                } else if (path === "/sinal_lora") {
+                    txtSinal.innerText = "Sinal LoRa: " + data;
                 } else if (path === "/heartbeat") {
                     ultimoPingESP = Number(data);
                 } else if (path.startsWith("/historico")) {
@@ -160,7 +162,7 @@
         }
 
         function buscarHistoricoCompleto() {
-            fetch(`${URL_BASE}/central/historico.json`)
+            fetch(`${URL_BASE}/historico.json`)
                 .then(r => r.json())
                 .then(historico => {
                     if (historico) atualizarHistoricoHTML(historico);
@@ -230,6 +232,7 @@
                 card.style.borderTopColor = "#555";
                 card.style.animation = "none";
                 txtStatus.innerText = "Status: Indisponível | Sem atividade de rede";
+                txtSinal.innerText = "Sinal LoRa: INDISPONÍVEL";
             }
         }, 5000);
 
