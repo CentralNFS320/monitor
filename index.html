@@ -53,7 +53,12 @@
         const logBox = document.getElementById("logBox");
 
         // Escuta em tempo real a pasta /central criada pela placa ESP32
-        database.ref('/central').on('value', (snapshot) => {
+        
+
+// SUBSTITUA DEIXANDO APENAS A BARRA DA RAIZ DO BANCO:
+        database.ref('/').on('value', (snapshot) => {
+
+       
             const data = snapshot.val();
             
             if (!data) {
