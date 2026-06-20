@@ -53,6 +53,7 @@
             border-radius: 5px;
             cursor: pointer;
             transition: 0.3s;
+            user-select: none;
         }
         .btn:hover {
             background: rgba(0, 170, 255, 0.1);
@@ -105,8 +106,8 @@
     </div>
 
     <script>
-        // URL Oficial da API REST do seu banco atualizado
-        const URL_REST = "https://munitor-de-alarme-default-rtdb.firebaseio.com/central.json";
+        // URL ajustada exatamente com a raiz do seu banco + a rota da pasta da central
+        const URL_REST = "https://firebaseio.com";
 
         const card = document.getElementById('mainCard');
         const evDiv = document.getElementById('ev');
@@ -123,27 +124,25 @@
                     if (!response.ok) throw new Error('Erro de conexão HTTP');
                     return response.json();
                 })
-                .then(data => {
-                    if (!data) {
-                        evDiv.innerText = "BANCO DE DADOS VAZIO\n(AGUARDANDO RESET DA PLACA EMISSORA)";
+                .then(base => {
+                    if (!base) {
+                        evDiv.innerText = "BANCO DE DADOS VAZIO\n(AGUARDANDO EVENTOS DO RECEPTOR)";
                         evDiv.style.color = "#f1c40f";
                         card.style.borderTopColor = "#f1c40f";
                         txtStatus.innerText = "Status: Conectado | Sem registros";
                         return;
                     }
 
-                    // Sincroniza independente da estrutura de nós do Firebase
-                    const base = data.central ? data.central : data;
-
-                    statusAtual = base.tipo_status || base.tipo || "NORMAL";
-                    evDiv.innerText = base.status || base.mensagem || "Aguardando evento...";
+                    // Lê as variáveis do nó mapeadas pelo ESP32
+                    statusAtual = base.tipo_status || "NORMAL";
+                    evDiv.innerText = base.status || "Aguardando evento...";
                     
-                    ultimoPingESP = Number(base.heartbeat || base.last_ping || Date.now());
+                    ultimoPingESP = Number(base.heartbeat || Date.now());
                     divOffline.style.display = "none";
 
                     atualizarLayoutCores();
 
-                    // Processa e renderiza a lista de logs no histórico remoto
+                    // Renderiza o histórico de eventos vindos do Firebase
                     if (base.historico) {
                         let logsHTML = "";
                         Object.keys(base.historico).forEach((key) => {
@@ -165,7 +164,7 @@
                         logContainer.innerText = logsHTML || "Nenhum histórico disponível.";
                     }
 
-                    // Watchdog: Verifica se o ESP32 parou de enviar o Heartbeat (Timeout 35s)
+                    // Watchdog de conexão com o ESP32 (Tolerância de 35s)
                     const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
                     if (tempoSemSinal > 35) {
                         forçarModoOffline(tempoSemSinal);
@@ -173,7 +172,7 @@
                 })
                 .catch(error => {
                     console.error(error);
-                    evDiv.innerText = "FALHA DE SINCRONISMO\n(VERIFIQUE AS REGRAS DO FIREBASE)";
+                    evDiv.innerText = "FALHA DE SINCRONISMO\n(VERIFIQUE AS REGRAS OU URL DO BANCO)";
                     evDiv.style.color = "#ff3333";
                     card.style.borderTopColor = "#ff3333";
                     txtStatus.innerText = "Status: Erro ao consultar a rota REST";
@@ -183,14 +182,13 @@
         function forçarModoOffline(tempo) {
             divOffline.style.display = "block";
             divOffline.innerText = "🚨 ALERTA: DISPOSITIVO OFFLINE HÁ " + Math.round(tempo) + " SEGUNDOS!";
-            evDiv.innerText = "SISTEMA DESCONECTADO\n(ESP32 SEM ALIMENTAÇÃO OU WI-FI)";
+            evDiv.innerText = "SISTEMA DESCONECTADO\n(ESP32 RECEPTOR SEM WI-FI OU DESLIGADO)";
             evDiv.style.color = "#888";
             card.style.borderTopColor = "#555";
             card.style.animation = "none";
             txtStatus.innerText = "Status: Indisponível | Sem atividade de rede";
         }
 
-        // --- CONTINUAÇÃO E CORREÇÃO DA SUA FUNÇÃO CORTADA ---
         function atualizarLayoutCores() {
             const tempoSemSinal = (Date.now() - ultimoPingESP) / 1000;
             if (tempoSemSinal > 35) return;
@@ -225,7 +223,7 @@
             }
         }
 
-        // Executa a busca inicial e define o loop de varredura a cada 3 segundos
+        // Execução cíclica da varredura remota
         atualizarPainelREST();
         setInterval(atualizarPainelREST, 3000);
     </script>
