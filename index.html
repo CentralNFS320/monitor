@@ -3,74 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Teste Rápido</title>
+    <title>CF SISTEMAS - Teste de Comunicação</title>
     <style>
         body { font-family: monospace; background: #121212; color: #e0e0e0; text-align: center; padding: 20px; }
-        .painel { background: #000; border: 2px solid #2ecc71; padding: 20px; display: inline-block; width: 90%; max-width: 500px; border-radius: 8px; margin-top: 50px; }
+        .painel { background: #000; border: 2px solid #2ecc71; padding: 20px; display: inline-block; width: 90%; max-width: 500px; border-radius: 8px; margin-top: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         .status-texto { font-size: 20px; color: #2ecc71; font-weight: bold; margin: 20px 0; white-space: pre-wrap; }
-        .log-box { background: #050505; border: 1px solid #333; padding: 10px; height: 150px; overflow-y: scroll; text-align: left; font-size: 12px; color: #888; }
+        .info-sub { font-size: 11px; color: #555; font-family: sans-serif; }
+        .log-box { background: #050505; border: 1px solid #333; padding: 10px; height: 180px; overflow-y: scroll; text-align: left; font-size: 12px; color: #0f0; white-space: pre-wrap; margin-top: 15px; }
     </style>
 </head>
 <body>
 
     <div class="painel">
         <h2>CF SISTEMAS - MONITORAMENTO</h2>
+        <h5 style="color: #666; margin-top: -5px;">Teste Direto via API REST</h5>
         <hr style="border-color: #222;">
-        <div id="msgCentral" class="status-texto">Conectando ao Firebase...</div>
-        <p id="infoRede" style="font-size: 11px; color: #555;">Iniciando varredura...</p>
         
-        <h4 style="text-align: left; margin-bottom: 5px; color: #aaa;">📜 ÚLTIMOS LOGS:</h4>
-        <div id="logBox" class="log-box">Aguardando dados...</div>
+        <div id="msgCentral" class="status-texto">Conectando ao Firebase...</div>
+        <p id="infoRede" class="info-sub">Iniciando busca de pacotes...</p>
+        
+        <h4 style="text-align: left; margin-bottom: 5px; color: #aaa;">📜 HISTÓRICO DE EVENTOS:</h4>
+        <div id="logBox" class="log-box">Aguardando sincronismo...</div>
     </div>
 
     <script>
-        // URL 100% cravada no seu projeto oficial do Realtime Database
-        const URL_FIREBASE = "https://firebaseio.com";
+        // Força a URL correta diretamente, ignorando qualquer lixo de memória anterior
+        const URL_REST = "https://firebaseio.com";
 
-        function testarConexao() {
-            fetch(URL_FIREBASE)
+        function atualizarPainelSimples() {
+            fetch(URL_REST)
                 .then(res => {
-                    if (!res.ok) throw new Error("Erro HTTP: " + res.status);
+                    if (!res.ok) throw new Error("Erro na requisição: " + res.status);
                     return res.json();
                 })
                 .then(data => {
                     if (!data) {
-                        document.getElementById("msgCentral").innerText = "BANCO DE DADOS VAZIO";
+                        document.getElementById("msgCentral").innerText = "BANCO SEM DADOS";
                         document.getElementById("msgCentral").style.color = "#f1c40f";
                         return;
                     }
 
-                    // Exibe a mensagem atual da NFS-320
-                    document.getElementById("msgCentral").innerText = data.status || "Sem mensagem enviada";
-                    document.getElementById("msgCentral").style.color = (data.tipo_status === "FALHA") ? "#f1c40f" : "#2ecc71";
+                    // Mostra o texto atual da Notifier enviado pelo ESP
+                    document.getElementById("msgCentral").innerText = data.status || "Aguardando evento...";
                     
-                    document.getElementById("infoRede").innerText = "Sincronizado com sucesso! Classe: " + (data.tipo_status || "NORMAL");
+                    // Ajusta a cor dinamicamente com base no tipo_status
+                    if (data.tipo_status === "FALHA") {
+                        document.getElementById("msgCentral").style.color = "#f1c40f";
+                    } else if (data.tipo_status === "FOGO") {
+                        document.getElementById("msgCentral").style.color = "#ff3333";
+                    } else {
+                        document.getElementById("msgCentral").style.color = "#2ecc71";
+                    }
 
-                    // Monta o histórico simplificado
+                    document.getElementById("infoRede").innerText = "Monitoramento ativo com a nuvem | Classe: " + (data.tipo_status || "NORMAL");
+
+                    // Renderiza o histórico de forma simples
                     if (data.historico) {
-                        let htmlLogs = "";
-                        Object.keys(data.historico).slice(-10).forEach(key => {
-                            const item = data.historico[key];
-                            if (typeof item === 'string') {
-                                htmlLogs = "> " + item + "\n" + htmlLogs;
-                            } else if (item && item.mensagem) {
-                                htmlLogs = "> " + item.mensagem + "\n" + htmlLogs;
+                        let stringLogs = "";
+                        Object.keys(data.historico).slice(-15).forEach(key => {
+                            const log = data.historico[key];
+                            if (typeof log === 'string') {
+                                stringLogs = "> " + log + "\n" + stringLogs;
+                            } else if (log && log.mensagem) {
+                                stringLogs = "> " + log.mensagem + "\n" + stringLogs;
                             }
                         });
-                        document.getElementById("logBox").innerText = htmlLogs;
+                        document.getElementById("logBox").innerText = stringLogs;
                     }
                 })
                 .catch(err => {
-                    console.error(err);
-                    document.getElementById("msgCentral").innerText = "ERRO DE CONEXÃO";
+                    console.error("Falha ao conectar:", err);
+                    document.getElementById("msgCentral").innerText = "FALHA DE SINCRONISMO";
                     document.getElementById("msgCentral").style.color = "#ff3333";
-                    document.getElementById("infoRede").innerText = "Verifique se as Regras do Firebase estão públicas (true).";
+                    document.getElementById("infoRede").innerText = "Erro ao ler rota REST. Certifique-se de que as regras do Firebase estão públicas.";
                 });
         }
 
-        // Executa na hora e atualiza a cada 3 segundos
-        testarConexao();
-        setInterval(testarConexao, 3000);
+        // Executa a primeira busca na hora e repete a cada 3 segundos
+        atualizarPainelSimples();
+        setInterval(atualizarPainelSimples, 3000);
     </script>
 </body>
 </html>
