@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Teste de Comunicação</title>
+    <title>CF SISTEMAS - Teste de Atualização</title>
     <style>
         body { font-family: monospace; background: #121212; color: #e0e0e0; text-align: center; padding: 20px; }
-        .painel { background: #000; border: 2px solid #2ecc71; padding: 20px; display: inline-block; width: 90%; max-width: 500px; border-radius: 8px; margin-top: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .status-texto { font-size: 20px; color: #2ecc71; font-weight: bold; margin: 20px 0; white-space: pre-wrap; }
-        .info-sub { font-size: 11px; color: #555; font-family: sans-serif; }
-        .log-box { background: #050505; border: 1px solid #333; padding: 10px; height: 180px; overflow-y: scroll; text-align: left; font-size: 12px; color: #0f0; white-space: pre-wrap; margin-top: 15px; }
+        .painel { background: #000; border: 2px solid #00a2ff; padding: 20px; display: inline-block; width: 90%; max-width: 500px; border-radius: 8px; margin-top: 50px; box-shadow: 0 4px 15px rgba(0,162,255,0.3); }
+        .status-texto { font-size: 20px; color: #00a2ff; font-weight: bold; margin: 20px 0; white-space: pre-wrap; }
+        .info-sub { font-size: 11px; color: #666; font-family: sans-serif; }
+        .log-box { background: #050505; border: 1px solid #333; padding: 10px; height: 180px; overflow-y: scroll; text-align: left; font-size: 12px; color: #00a2ff; white-space: pre-wrap; margin-top: 15px; }
     </style>
 </head>
 <body>
 
     <div class="painel">
-        <h2>CF SISTEMAS - MONITORAMENTO</h2>
-        <h5 style="color: #666; margin-top: -5px;">Teste Direto via API REST</h5>
+        <!-- ALTERAÇÃO VISUAL: TÍTULO MODIFICADO PARA VALIDAR ATUALIZAÇÃO -->
+        <h2>TESTE DE ALTERAÇÃO OK</h2>
+        <h5 style="color: #666; margin-top: -5px;">Varredura REST - CF Sistemas</h5>
         <hr style="border-color: #222;">
         
         <div id="msgCentral" class="status-texto">Conectando ao Firebase...</div>
@@ -27,7 +28,7 @@
     </div>
 
     <script>
-        // --- AJUSTADO: ROTA COM PARÂMETRO AUTH OBRIGATÓRIO PARA SITES ---
+        // URL Oficial estruturada e corrigida
         const URL_REST = "https://firebaseio.com";
 
         function atualizarPainelSimples() {
@@ -46,7 +47,6 @@
                     // Mostra o texto atual da Notifier enviado pelo ESP
                     document.getElementById("msgCentral").innerText = data.status || "Aguardando evento...";
                     
-                    // Ajusta a cor dinamicamente com base no tipo_status
                     if (data.tipo_status === "FALHA") {
                         document.getElementById("msgCentral").style.color = "#f1c40f";
                     } else if (data.tipo_status === "FOGO") {
@@ -55,9 +55,8 @@
                         document.getElementById("msgCentral").style.color = "#2ecc71";
                     }
 
-                    document.getElementById("infoRede").innerText = "Monitoramento ativo com a nuvem | Classe: " + (data.tipo_status || "NORMAL");
+                    document.getElementById("infoRede").innerText = "Conectado à nuvem externa com sucesso!";
 
-                    // Renderiza o histórico de forma simples
                     if (data.historico) {
                         let stringLogs = "";
                         Object.keys(data.historico).slice(-15).forEach(key => {
@@ -75,11 +74,10 @@
                     console.error("Falha ao conectar:", err);
                     document.getElementById("msgCentral").innerText = "FALHA DE SINCRONISMO";
                     document.getElementById("msgCentral").style.color = "#ff3333";
-                    document.getElementById("infoRede").innerText = "Erro ao ler rota REST. Certifique-se de que as regras do Firebase estão públicas.";
+                    document.getElementById("infoRede").innerText = "Aguardando liberação das regras de leitura no console.";
                 });
         }
 
-        // Executa a primeira busca na hora e repete a cada 3 segundos
         atualizarPainelSimples();
         setInterval(atualizarPainelSimples, 3000);
     </script>
