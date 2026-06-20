@@ -106,7 +106,8 @@
 
     <script>
         // URL Oficial da API REST do seu banco (Com o token público embutido para navegadores)
-        const URL_REST = "https://firebaseio.com";
+        const URL_REST =
+        "https://munitor-de-alarme-default-rtdb.firebaseio.com/central.json";
 
         const card = document.getElementById('mainCard');
         const evDiv = document.getElementById('ev');
@@ -139,7 +140,11 @@
                     statusAtual = base.tipo_status || base.tipo || "NORMAL";
                     evDiv.innerText = base.status || base.mensagem || "Aguardando evento...";
                     
-                    ultimoPingESP = base.heartbeat || base.last_ping || Date.now();
+                   ultimoPingESP = Number(
+                        base.heartbeat ||
+                        base.last_ping ||
+                        Date.now()
+                    );
                     divOffline.style.display = "none";
 
                     atualizarLayoutCores();
