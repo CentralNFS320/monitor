@@ -3,83 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CF SISTEMAS - Teste de Atualização</title>
+    <title>CF SISTEMAS - Leitura Bruta</title>
     <style>
-        body { font-family: monospace; background: #121212; color: #e0e0e0; text-align: center; padding: 20px; }
-        .painel { background: #000; border: 2px solid #00a2ff; padding: 20px; display: inline-block; width: 90%; max-width: 500px; border-radius: 8px; margin-top: 50px; box-shadow: 0 4px 15px rgba(0,162,255,0.3); }
-        .status-texto { font-size: 20px; color: #00a2ff; font-weight: bold; margin: 20px 0; white-space: pre-wrap; }
-        .info-sub { font-size: 11px; color: #666; font-family: sans-serif; }
-        .log-box { background: #050505; border: 1px solid #333; padding: 10px; height: 180px; overflow-y: scroll; text-align: left; font-size: 12px; color: #00a2ff; white-space: pre-wrap; margin-top: 15px; }
+        body { font-family: monospace; background: #121212; color: #e0e0e0; padding: 20px; text-align: left; }
+        .painel { background: #000; border: 2px solid #ff00ea; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(255,0,234,0.2); max-width: 600px; margin: 0 auto; }
+        .dados-brutos { background: #050505; border: 1px solid #333; padding: 15px; color: #0f0; white-space: pre-wrap; font-size: 13px; height: 300px; overflow-y: scroll; margin-top: 15px; }
     </style>
 </head>
 <body>
 
     <div class="painel">
-        <!-- ALTERAÇÃO VISUAL: TÍTULO MODIFICADO PARA VALIDAR ATUALIZAÇÃO -->
-        <h2>TESTE DE ALTERAÇÃO OK</h2>
-        <h5 style="color: #666; margin-top: -5px;">Varredura REST - CF Sistemas</h5>
+        <!-- TÍTULO NOVO PARA CONFIRMAR ATUALIZAÇÃO VISUAL -->
+        <h2 style="color: #ff00ea; text-align: center;">MODO DE INSPEÇÃO ATIVO</h2>
+        <p style="font-size: 11px; color: #666; text-align: center;">Buscando estrutura crua do JSON...</p>
         <hr style="border-color: #222;">
         
-        <div id="msgCentral" class="status-texto">Conectando ao Firebase...</div>
-        <p id="infoRede" class="info-sub">Iniciando busca de pacotes...</p>
+        <div id="statusRede" style="font-weight: bold; text-align: center;">Aguardando resposta da nuvem...</div>
         
-        <h4 style="text-align: left; margin-bottom: 5px; color: #aaa;">📜 HISTÓRICO DE EVENTOS:</h4>
-        <div id="logBox" class="log-box">Aguardando sincronismo...</div>
+        <h4>📦 CONTEÚDO REAL DO SEU BANCO DE DADOS:</h4>
+        <div id="jsonDisplay" class="dados-brutos">Carregando estrutura...</div>
     </div>
 
     <script>
-        // URL Oficial estruturada e corrigida
-        const URL_REST = "https://firebaseio.com";
+        // Testando a raiz inteira do banco para ver a pasta /central criada pelo ESP
+        const URL_DEBUG = "https://firebaseio.com";
 
-        function atualizarPainelSimples() {
-            fetch(URL_REST)
+        function inspecionarBanco() {
+            fetch(URL_DEBUG)
                 .then(res => {
-                    if (!res.ok) throw new Error("Erro na requisição: " + res.status);
+                    if (!res.ok) throw new Error("Erro na rede. Código HTTP: " + res.status);
                     return res.json();
                 })
                 .then(data => {
-                    if (!data) {
-                        document.getElementById("msgCentral").innerText = "BANCO SEM DADOS";
-                        document.getElementById("msgCentral").style.color = "#f1c40f";
+                    const statusDiv = document.getElementById("statusRede");
+                    const displayDiv = document.getElementById("jsonDisplay");
+
+                    if (data === null) {
+                        statusDiv.innerText = "✅ CONECTADO! Mas o seu banco está totalmente vazio.";
+                        statusDiv.style.color = "#f1c40f";
+                        displayDiv.innerText = "Nenhuma chave encontrada na nuvem.";
                         return;
                     }
 
-                    // Mostra o texto atual da Notifier enviado pelo ESP
-                    document.getElementById("msgCentral").innerText = data.status || "Aguardando evento...";
+                    statusDiv.innerText = "🚀 SUCESSO! Banco de dados lido com sucesso.";
+                    statusDiv.style.color = "#2ecc71";
                     
-                    if (data.tipo_status === "FALHA") {
-                        document.getElementById("msgCentral").style.color = "#f1c40f";
-                    } else if (data.tipo_status === "FOGO") {
-                        document.getElementById("msgCentral").style.color = "#ff3333";
-                    } else {
-                        document.getElementById("msgCentral").style.color = "#2ecc71";
-                    }
-
-                    document.getElementById("infoRede").innerText = "Conectado à nuvem externa com sucesso!";
-
-                    if (data.historico) {
-                        let stringLogs = "";
-                        Object.keys(data.historico).slice(-15).forEach(key => {
-                            const log = data.historico[key];
-                            if (typeof log === 'string') {
-                                stringLogs = "> " + log + "\n" + stringLogs;
-                            } else if (log && log.mensagem) {
-                                stringLogs = "> " + log.mensagem + "\n" + stringLogs;
-                            }
-                        });
-                        document.getElementById("logBox").innerText = stringLogs;
-                    }
+                    // Despeja a estrutura real e as letras como o ESP salvou na nuvem
+                    displayDiv.innerText = JSON.stringify(data, null, 4);
                 })
                 .catch(err => {
-                    console.error("Falha ao conectar:", err);
-                    document.getElementById("msgCentral").innerText = "FALHA DE SINCRONISMO";
-                    document.getElementById("msgCentral").style.color = "#ff3333";
-                    document.getElementById("infoRede").innerText = "Aguardando liberação das regras de leitura no console.";
+                    console.error(err);
+                    document.getElementById("statusRede").innerText = "❌ ERRO DE CONEXÃO";
+                    document.getElementById("statusRede").style.color = "#ff3333";
+                    document.getElementById("jsonDisplay").innerText = err.message + "\n\nVerifique se o banco de dados foi excluído ou se a aba de Regras (Rules) bloqueou a leitura anônima.";
                 });
         }
 
-        atualizarPainelSimples();
-        setInterval(atualizarPainelSimples, 3000);
+        // Executa imediatamente e varre a cada 4 segundos
+        inspecionarBanco();
+        setInterval(inspecionarBanco, 4000);
     </script>
 </body>
 </html>
